@@ -1,0 +1,41 @@
+from easydict import EasyDict as edict
+
+__C = edict()
+
+model_cfg = __C
+__C.STYLEXD = edict()
+
+__C.STYLEXD.ROT_TYPE = 'rmat'
+
+
+__C.STYLEXD.USE_POINT_FEATURE = True
+__C.STYLEXD.USE_LOCAL_POINT_FEATURE = True
+__C.STYLEXD.USE_GLOBAL_POINT_FEATURE = False
+__C.STYLEXD.USE_UV_FEATURE = False
+
+__C.STYLEXD.PC_FEAT_DIM = 128
+__C.STYLEXD.UV_FEAT_DIM = 128
+__C.STYLEXD.AFF_FEAT_DIM = 512
+__C.STYLEXD.AFFINITY = 'aff_dual'
+__C.STYLEXD.ENCODER = 'pointnet2_pt.msg.dynamic'
+# __C.STYLEXD.TEST_S_MASK = True
+__C.STYLEXD.PC_NUM_CLS = 2
+__C.STYLEXD.PC_CLS_THRESHOLD = 0.8
+
+# 是否分阶段训练模型
+__C.STYLEXD.IS_TRAIN_IN_STAGE = False
+
+__C.STYLEXD.SINKHORN_MAXITER = 20
+__C.STYLEXD.SINKHORN_TAU = 0.05
+
+__C.STYLEXD.TF_LAYER_NUM = 1
+__C.STYLEXD.TF_NUM_HEADS = 8
+__C.STYLEXD.TF_NUM_SAMPLE = 16
+
+__C.STYLEXD.LOSS = edict()
+__C.STYLEXD.LOSS.w_cls_loss = 0.5
+__C.STYLEXD.LOSS.w_mat_loss = 0.0
+
+
+def get_model_cfg():
+    return model_cfg.STYLEXD

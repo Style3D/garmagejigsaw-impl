@@ -1,0 +1,82 @@
+
+MODEL_NAME: jigsaw_StyleXD
+MODULE: jigsaw_stylexd
+
+PROJECT: jigsaw
+
+DATASET: stylexd.all_piece_matching
+
+#WEIGHT_FILE: pretrained/pipline4/V6_E100.ckpt
+
+RESUME: false
+WANDB:
+  ID: ivjf8z54
+
+GPUS: [0]
+BATCH_SIZE: 4
+NUM_WORKERS: 4
+
+TRAIN:
+  NUM_EPOCHS: 100
+  LR: 0.001
+  WEIGHT_DECAY: 0.
+  WARMUP_RATIO: 0.
+  LR_SCHEDULER: 'cosine' # [notice] 恢复训练时不开这个
+  LR_DECAY: 100.
+  VAL_EVERY: 1
+
+MODEL:
+  USE_POINT_FEATURE: True   # 是否提取点特征
+  USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
+  USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
+  USE_UV_FEATURE: True      # 是否提取UV特征
+  TF_LAYER_NUM: 5  # PT层的数量
+  IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
+  PC_CLS_THRESHOLD: 0.5
+  LOSS:
+    w_cls_loss: 1.0
+    w_mat_loss: 0.0
+
+CALLBACK:
+  CHECKPOINT_MONITOR: val/mat_f1
+  CHECKPOINT_MODE: max
+
+DATA:
+  DATA_DIR: "data/stylexd_jigsaw"
+  NUM_PC_POINTS: 1500
+
+  SHUFFLE: True  # 打乱dataset
+
+  MAX_NUM_PART: 33
+  MIN_PART_POINT: 10
+
+  PCS_SAMPLE_TYPE:  # 在Panel上采样的方式
+    TRAIN: stitch
+    VAL: stitch
+    TEST: boundary_pcs
+
+  SHRINK_MESH:
+    TRAIN: True
+    VAL: False
+    TEST: False
+  SHRINK_MESH_PARAM:
+    TRAIN: 0.9
+    VAL: 1
+    TEST: 1
+
+  PCS_NOISE_TYPE: default  # default  normal
+  PCS_NOISE_STRENGTH: 0.0
+  USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
+  STITCH_NOISE_STRENGTH: 1
+  STITCH_NOISE_RANDOM_RANGE: [0.8, 2.2]
+
+  PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
+    TRAIN: default
+    VAL: default
+    TEST: default
+  SCALE_RANGE: 0.07
+  ROT_RANGE: 0.2
+  TRANS_RANGE: 3
+
+# STATS is for eval
+STATS: "./results/jigsaw_4x4_128_512_250e_cosine_everyday/stats/eval"
