@@ -85,8 +85,12 @@ def cal_neigbor_points_param_dis(start_point, end_point, all_panel_info):
         ]
     return index_dis
 
-# [todo] 根据输入的global_param，找到所在的panel
-# def global_param2panel_id():
+# 根据输入的global_param，找到所在的panel
+def global_param2panel_id(global_param, all_panel_info):
+    bins = torch.tensor([p["param_start"] for p in [all_panel_info[k] for k in all_panel_info]])
+    index = torch.searchsorted(bins, torch.tensor([global_param]), right=True) - 1
+    target_panel_id = list(all_panel_info.keys())[index]
+    return target_panel_id
 
 # [todo] 根据输入的global_param + panel_info，找到最近的俩point
 # def global_param2point_id():
@@ -133,6 +137,10 @@ def optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_
         # cur_end_point = stitch_edge[cur_right_key]
 
         # 计算两个点的param的差距
+        pass
+        # just 啊 test
+        a = global_param2panel_id(cur_left_point['global_param'], all_panel_info)
+
         if cur_left_point['global_param'] >= pre_right_point['global_param']:
             param_dis = cur_left_point['global_param'] - pre_right_point['global_param']
         else:
@@ -144,14 +152,14 @@ def optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_
             if cur_left_point['edge_id'] == pre_right_point['edge_id']:
                 # [todo] 这里的新方法可能存在问题
                 if pre_right_point['param'] < side_thresh or cur_left_point['param'] < side_thresh:
-                    mid_global = math.floor(pre_right_point['global_param'])
-                    mid_local = 0
+                    mid_global = math.floor(pre_right_point['global_param']) + 1e-5
+                    mid_local = 1e-5
                     # if mid_local<=pre_start_point["param"]:
                     #     mid_global = (cur_start_point['global_param'] + pre_end_point['global_param']) / 2
                     #     mid_local = (cur_start_point['param'] + pre_end_point['param']) / 2
                 elif 1 - pre_right_point['param'] < side_thresh or 1 - cur_left_point['param'] < side_thresh:
-                    mid_global = math.ceil(pre_right_point['global_param'])
-                    mid_local = 1
+                    mid_global = math.ceil(pre_right_point['global_param']) - 1e-5
+                    mid_local = 1 - 1e-5
                     # if mid_local>=cur_end_point["param"]:
                     #     mid_global = (cur_start_point['global_param'] + pre_end_point['global_param']) / 2
                     #     mid_local = (cur_start_point['param'] + pre_end_point['param']) / 2
