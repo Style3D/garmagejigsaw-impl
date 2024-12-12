@@ -28,8 +28,8 @@ def get_new_stitch():
 def get_new_stitch_edge(start_point=None, end_point=None, target_edge=None, isCC=None):
     stitch_edge = {
         "target_edge":target_edge,
-        "start_point":start_point,
-        "end_point":end_point,
+        "start_point":start_point.copy(),
+        "end_point":end_point.copy(),
         "isCC":isCC
     }
     return stitch_edge
@@ -179,6 +179,7 @@ def optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_
         #         raise ValueError("cal_neigbor_points_index_dis 方法的返回值有误")
 
         # 对于 param dis 小于阈值的相邻缝合边，对它们相衔接的部分进行优化
+
         if abs(param_dis) < param_dis_optimize_thresh:
             if cur_left_point['edge_id'] == pre_right_point['edge_id']:
                 # [todo] 这里的新方法可能存在问题
@@ -356,7 +357,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
     all_stitch_points_list = []
     stitch_points_list = []
     unstitch_num = 0
-    memory_len = 3 # ！！！！！重要参数！！！！！！！！！！
+
     for panel_id in all_panel_info:
         panel_info = all_panel_info[panel_id]
         edges_info = panel_info["edges_info"]
@@ -377,10 +378,9 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                 else:
                     point_info_cor = None
 
-                # 对几种特殊情况进行分别处理 --------------------------------------------------------------------------------
+                # 对几种特殊情况进行分别处理 ---------------------------------------------------------------------------------
                 for _ in range(1):
-                    # [modified]
-                    # 当前点不缝合，且已经连续数个点都不缝合时，开一条新的缝合
+                    # === 如果当前点不缝合 === ，且已经连续数个点都不缝合时，开一条新的缝合
                     if not point_info_cor:
                         unstitch_num+=1  # [modified]
                         if unstitch_num>unstitch_thresh:
@@ -389,19 +389,10 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                                 all_stitch_points_list.append(stitch_points_list)
                                 stitch_points_list = []
                         break
-                    else:
-                        unstitch_num = 0
+                    # === 如果当前点缝合 ===
+                    else: unstitch_num = 0
 
-
-                    # # 缝合点所在拟合边发生变化
-                    # if len(stitch_points_list) > 0:
-                    #     if point_info["edge_id"] != stitch_points_list[-1][0]["edge_id"]:
-                    #         all_stitch_points_list.append(stitch_points_list)
-                    #         stitch_points_list=[]
-                    #         stitch_points_list.append([point_info, point_info_cor])
-                    #         break
-
-                    # 根据 ==缝合点==的信息 判断是否开新的缝合
+                    # 根据“缝合点”的信息 判断是否开新的缝合 ------------------------------------------------------------------
                     if len(stitch_points_list) > 0:
                         # 缝合点所在Panel发生变化
                         if point_info["panel_id"] != stitch_points_list[-1][0]["panel_id"]:
@@ -410,42 +401,46 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                             stitch_points_list.append([point_info, point_info_cor])
                             break
 
-                    # 根据 ==被缝合点==的信息 判断是否开新的缝合
+                    # 根据“被缝合点”的信息 判断是否开新的缝合 ------------------------------------------------------------------
                     if len(stitch_points_list) > 0:
-                        # 根据panel_id的变化判断
+                        # === 判断panel_id是否发生变化 ===（trigger假时表示发生了变化）
                         trigger = False
-                        trigger_mask = []
+                        # trigger_mask = []
                         for p in point_info_cor:
                             for i_tmp, p_id_tmp in enumerate([e["panel_id"] for e in stitch_points_list[-1][1]]):
                                 if p["panel_id"] == p_id_tmp:
-                                    trigger=True
-                                    trigger_idx = i_tmp
-                                trigger_mask.append(p["panel_id"] == p_id_tmp)
+                                    trigger = True
+                                #     trigger_idx = i_tmp
+                                # trigger_mask.append(p["panel_id"] == p_id_tmp)
 
-                        # 被缝合点之间无关
+
+                        # === 如果被缝合点的 panel_id 发生了变化 ===
                         if not trigger:
                             all_stitch_points_list.append(stitch_points_list)
-                            stitch_points_list=None
-                            for idx_rel in range(len(all_stitch_points_list)-1)[::-1]:
-                                if idx_rel==len(all_stitch_points_list)-1-memory_len:
-                                    break
-                                # 如果前面能找到缝合和被缝合panel_id都相同的缝合，则在这个缝合上继续
-                                if (point_info["panel_id"] == all_stitch_points_list[idx_rel][0][0]["panel_id"] and
-                                    point_info_cor[0]["panel_id"] == all_stitch_points_list[idx_rel][0][1][0]["panel_id"]) :
-                                    stitch_points_list = all_stitch_points_list.pop(idx_rel)
-                                    break
-
-                            if not stitch_points_list:
-                                stitch_points_list = []
+                            # stitch_points_list=None
+                            # for idx_rel in range(len(all_stitch_points_list)-1)[::-1]:
+                            #     if idx_rel==len(all_stitch_points_list)-1-memory_len:
+                            #         stitch_points_list = []
+                            #         stitch_points_list.append([point_info, point_info_cor])
+                            #         break
+                            #     # 如果前面能找到缝合和被缝合panel_id都相同的缝合，则在这个缝合上继续
+                            #     if (point_info["panel_id"] == all_stitch_points_list[idx_rel][0][0]["panel_id"] and
+                            #         point_info_cor[0]["panel_id"] == all_stitch_points_list[idx_rel][0][1][0]["panel_id"]) :
+                            #         stitch_points_list = all_stitch_points_list.pop(idx_rel)
+                            #         break
+                            #
+                            # if not stitch_points_list:
+                            #     stitch_points_list = []
+                            stitch_points_list = []
                             stitch_points_list.append([point_info, point_info_cor])
                             break
 
-                        # 被缝合点之间相关，但间距过大
+                        # === 如果被缝合点的 panel_id 没有发生变化 ===
+                        # 当前和上一个被缝合点的间距如果过大，则开新的缝合边
                         thresh_side_dis = 0.6
                         if trigger:
-                            # 计算之间的双向param_dis
+                            # 计算两个被缝合点的双向param_dis
                             param_dis_d = cal_neigbor_points_param_dis(stitch_points_list[-1][1][0], point_info_cor[0], all_panel_info)
-
                             param_dis_mask = np.array(param_dis_d)<thresh_side_dis
                             # 如果两边的距离都超出了阈值
                             if np.sum(param_dis_mask)==0:
@@ -454,8 +449,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                                 stitch_points_list.append([point_info, point_info_cor])
                                 break
 
-
-                        # 被缝合点是歧义点（这代表这个点是拟合边的端点），且与上一个点是相关的
+                        # 被缝合点是歧义点（这代表这个点是拟合边的端点），取更近的那个
                         if trigger and len(point_info_cor)>1:
                             param_dis_d = [
                                 min(cal_neigbor_points_param_dis(stitch_points_list[-1][1][0],
@@ -482,77 +476,61 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
     if len(stitch_points_list) > 0:
         all_stitch_points_list.append(stitch_points_list)
 
-    pass
-    # # 到目前为止，可以保证all_stitch_points_list中的每一段缝合的两个边都各自位于同一Panel上
-    # # [TEST] 下面循环仅用于验证这一结论：
-    # for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
-    #     for point_idx, point in enumerate(stitch_points_list):
-    #         if point_idx==0: continue
-    #         point_left = stitch_points_list[point_idx-1]
-    #         if point_left[0]["panel_id"] != point[0]["panel_id"]:
-    #             raise ValueError("出现不满足条件的缝合边")
-    #         trigger = False
-    #         for p in point[1]:
-    #             if p["panel_id"] in [e["panel_id"] for e in point_left[1]]:
-    #                 trigger = True
-    #         if not trigger:
-    #             raise ValueError("出现不满足条件的被缝合边")
-    pass
 
-    # 将太短的全部过滤掉
+    # 将太短的全部过滤掉 --------------------------------------------------------------------------------------------------
     all_stitch_points_list = filter_too_short(all_stitch_points_list, fliter_len = fliter_len) # [modified]
 
-    # 消除歧义点 ---------------------------------------------------------------------------------------------------------
-    for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
-        is_previous_matched = False
-        for sp_idx, st_point in enumerate(stitch_points_list):
-            is_current_matched = False
-            # 非歧义点不处理
-            if len(st_point[1]) == 1: continue
-            # 对于歧义点，找到用于对比的点的idx：compare_idx
-            # if sp_idx == 0:
-            if sp_idx==0:
-                compare_idx = sp_idx+1
-            elif is_previous_matched:
-                if sp_idx==len(stitch_points_list)-1:
-                    compare_idx = 0
-                else:
-                    compare_idx = sp_idx+1
-            else:
-                compare_idx = sp_idx-1
+    # # （暂时没用了）消除歧义点 --------------------------------------------------------------------------------------------
+    # for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
+    #     is_previous_matched = False
+    #     for sp_idx, st_point in enumerate(stitch_points_list):
+    #         is_current_matched = False
+    #         # 非歧义点不处理
+    #         if len(st_point[1]) == 1: continue
+    #         # 对于歧义点，找到用于对比的点的idx：compare_idx
+    #         # if sp_idx == 0:
+    #         if sp_idx==0:
+    #             compare_idx = sp_idx+1
+    #         elif is_previous_matched:
+    #             if sp_idx==len(stitch_points_list)-1:
+    #                 compare_idx = 0
+    #             else:
+    #                 compare_idx = sp_idx+1
+    #         else:
+    #             compare_idx = sp_idx-1
+    #
+    #         # 对目标点进行匹配
+    #         is_valid, p_idx = is_valid_stitch_point(st_point, stitch_points_list[compare_idx])
+    #
+    #         # 如果左点对比失败，且不是最后点
+    #         if not is_valid and compare_idx==sp_idx-1 and sp_idx!=len(stitch_points_list)-1:
+    #             # 对右点进行匹配
+    #             compare_idx = sp_idx - 1
+    #             is_valid, p_idx = is_valid_stitch_point(st_point, stitch_points_list[compare_idx])
+    #
+    #         # 如果歧义点找到了合理的邻近匹配
+    #         if is_valid:
+    #             st_point[1] = [st_point[1][p_idx]]
+    #             is_current_matched = True
+    #
+    #         # 没有邻近匹配
+    #         else:
+    #             # [todo] 可能有能改进的地方
+    #             if sp_idx == 0:
+    #                 st_point[1] = [st_point[1][1]]
+    #             elif sp_idx == len(stitch_points_list)-1:
+    #                 st_point[1] = [st_point[1][0]]
+    #             else:
+    #                 stitch_points_list.remove(st_point)
+    #
+    #         is_previous_matched = is_current_matched
 
-            # 对目标点进行匹配
-            is_valid, p_idx = is_valid_stitch_point(st_point, stitch_points_list[compare_idx])
-
-            # 如果左点对比失败，且不是最后点
-            if not is_valid and compare_idx==sp_idx-1 and sp_idx!=len(stitch_points_list)-1:
-                # 对右点进行匹配
-                compare_idx = sp_idx - 1
-                is_valid, p_idx = is_valid_stitch_point(st_point, stitch_points_list[compare_idx])
-
-            # 如果歧义点找到了合理的邻近匹配
-            if is_valid:
-                st_point[1] = [st_point[1][p_idx]]
-                is_current_matched = True
-
-            # 没有邻近匹配
-            else:
-                # [todo] 可能有能改进的地方
-                if sp_idx == 0:
-                    st_point[1] = [st_point[1][1]]
-                elif sp_idx == len(stitch_points_list)-1:
-                    st_point[1] = [st_point[1][0]]
-                else:
-                    stitch_points_list.remove(st_point)
-
-            is_previous_matched = is_current_matched
     # 再将歧义点由list换成dict
     for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
         for sp_idx, st_point in enumerate(stitch_points_list):
             st_point[1] = st_point[1][0]
 
-    # 为每个缝合计算是否逆时针 ----------------------------------------------------------------------------------------------
-    # 每个缝合边是否逆时针
+    # 为每个缝合计算时针方向 ------------------------------------------------------------------------------------------------
     isCC_order_list = []
     for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
         isCC_order_list.append([None,None])
@@ -576,7 +554,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
 
 
     # 为每组连续且属于同一个edge的点按照param进行排序 --------------------------------------------------------------------------
-    # [todo]改成根据paramdis进行排序
     cmpfun = lambda x: (x["global_param"])
     for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
         unordered_stitch_points_list = []
@@ -588,10 +565,8 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                 if stitch_point[1]["edge_id"] == start_edge_id and point_idx == len(stitch_points_list)-1:
                     unordered_stitch_points_list.append(stitch_point[1])
 
-                if isCC_order_list[s_idx][1]:
-                    reverse = True
-                else:
-                    reverse = False
+                if isCC_order_list[s_idx][1]: reverse = True
+                else: reverse = False
 
                 ordered_stitch_points_list = deepcopy(sorted(unordered_stitch_points_list, key=cmpfun, reverse=reverse))
                 for i in range(len(unordered_stitch_points_list)):
@@ -632,7 +607,8 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
             stitch_edge_list_paramOrder = sorted(stitch_edge_list_paramOrder,
                                                  key=lambda x:(x["start_point"]["global_param"] if not x["isCC"]
                                                                else x["end_point"]["global_param"]))
-
+            # 此时的stitch_edge_list_paramOrder是同属于同一panel，且按顺序排列的缝边列表
+            # 对同一panel上的缝边，优化它们的param
             optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_optimize_thresh, all_panel_info)
 
             start_edge_id = stitch_edge["start_point"]["panel_id"]
@@ -640,32 +616,34 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
         else:
             stitch_edge_list_paramOrder.append(stitch_edge)
 
-    # 处理离端点较近的点 ---------------------------------------------------------------------------------------------------
-    thresh = 0.2
-    for stitch_edge in stitch_edge_list:
-        for pt in [stitch_edge["start_point"], stitch_edge["end_point"]]:
-            if pt["param"] < thresh:
-                pt["global_param"] -= pt["param"]
-                pt["param"] = 0
-            elif 1-pt["param"] < thresh:
-                pt["global_param"] += 1-pt["param"]
-                pt["param"] = 1
-    pass
+    # # 处理离端点较近的点 ---------------------------------------------------------------------------------------------------
+    # thresh = 0.2
+    # for stitch_edge in stitch_edge_list:
+    #     for pt in [stitch_edge["start_point"], stitch_edge["end_point"]]:
+    #         if pt["param"] < thresh:
+    #             pt["global_param"] -= pt["param"]
+    #             pt["param"] = 0
+    #         elif 1-pt["param"] < thresh:
+    #             pt["global_param"] += 1-pt["param"]
+    #             pt["param"] = 1
+    # pass
 
-    # 将长度特别短的缝边删除 ------------------------------------------------------------------------------------------------
-    thresh = 0.08
-    filtered_stitch_edge_list = []
-    for start_stitch_edge, end_stitch_edge in zip(stitch_edge_list[::2], stitch_edge_list[1::2]):
-        # [modified]
-        # param_dis_st = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
-        # param_dis_ed = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
-        param_dis_st = cal_stitch_edge_param_dis(start_stitch_edge, all_panel_info)
-        param_dis_ed = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
-        if param_dis_st<thresh or param_dis_ed<thresh:
-            continue
-        filtered_stitch_edge_list.append(start_stitch_edge)
-        filtered_stitch_edge_list.append(end_stitch_edge)
-    stitch_edge_list = filtered_stitch_edge_list
+
+    # # 将长度特别短的缝边删除 ------------------------------------------------------------------------------------------------
+    # thresh = 0.08
+    # filtered_stitch_edge_list = []
+    # for start_stitch_edge, end_stitch_edge in zip(stitch_edge_list[::2], stitch_edge_list[1::2]):
+    #     # [modified]
+    #     # param_dis_st = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
+    #     # param_dis_ed = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
+    #     param_dis_st = cal_stitch_edge_param_dis(start_stitch_edge, all_panel_info)
+    #     param_dis_ed = cal_stitch_edge_param_dis(end_stitch_edge, all_panel_info)
+    #     if param_dis_st<thresh or param_dis_ed<thresh:
+    #         continue
+    #     filtered_stitch_edge_list.append(start_stitch_edge)
+    #     filtered_stitch_edge_list.append(end_stitch_edge)
+    # stitch_edge_list = filtered_stitch_edge_list
+
 
     # 将缝合数据转换为 AIGP 文件中 "stitches" 的格式 -------------------------------------------------------------------------
     stitch_edge_json_list = []

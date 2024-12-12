@@ -127,11 +127,9 @@ def get_pointstitch(batch, inf_rst,
     # [可视化] 缝合点上，带有概率的缝合关系 =========================
     logits = np.zeros(stitch_indices.shape[0])
     logits[:] = (logits_.detach().cpu().numpy())
-    # pointcloud_and_stitch_visualize(stitch_pcs, stitch_indices,
-    #                                 title=f"predict stitch(threshold={pc_stitch_threshold})")
-    if show_stitch:
-        pointcloud_and_stitch_logits_visualize(stitch_pcs, stitch_indices, logits,
-                                               title=f"predict stitch(threshold={pc_stitch_threshold}) in stitch points", )
+    # if show_stitch:
+    #     pointcloud_and_stitch_logits_visualize(stitch_pcs, stitch_indices, logits,
+    #                                            title=f"predict stitch(threshold={pc_stitch_threshold}) in stitch points", )
 
     # [可视化]所有点上，带有概率的缝合关系 =========================
     # 获取完整mat上的缝合关系
