@@ -1,3 +1,4 @@
+import json
 import os
 import pickle
 import random
@@ -66,7 +67,12 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         self.data_dir = data_dir
         self.data_list = self._read_data()[:10000]
 
-        # store parameters
+        try:
+            with open(os.path.join(data_dir,self.mode,"data_info.json"), "r", encoding="utf-8") as f:
+                self.data_info = json.load(f)
+        except:
+            self.data_info = None
+
         self.category = category if category.lower() != "all" else ""
 
         self.num_points = num_points
