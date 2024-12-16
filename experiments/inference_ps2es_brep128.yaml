@@ -6,7 +6,7 @@ PROJECT: jigsaw
 DATASET: stylexd.all_piece_matching
 
 # best is pipline4/V6_E59.ckpt
-WEIGHT_FILE: pretrained/pipline4/V6_E59.ckpt
+WEIGHT_FILE: pretrained/pipline4/V7_E300.ckpt
 
 RESUME: false
 WANDB:
@@ -26,7 +26,7 @@ TRAIN:
   VAL_EVERY: 5
 
 MODEL:
-  PC_CLS_THRESHOLD: 0.5
+  PC_CLS_THRESHOLD: 0.9999
   LOSS:
     w_cls_loss: 0.0
     w_mat_loss: 0.0

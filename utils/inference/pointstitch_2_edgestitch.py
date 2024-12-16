@@ -88,13 +88,13 @@ def cal_neigbor_points_param_dis(start_point, end_point, all_panel_info):
         ]
     return param_dis
 
-# [todo] 如果无用，删掉
-# 根据输入的global_param，找到所在的panel
-def global_param2panel_id(global_param, all_panel_info):
-    bins = torch.tensor([p["param_start"] for p in [all_panel_info[k] for k in all_panel_info]])
-    index = torch.searchsorted(bins, torch.tensor([global_param]), right=True) - 1
-    target_panel_id = list(all_panel_info.keys())[index]
-    return target_panel_id
+# # [todo] 如果无用，删掉
+# # 根据输入的global_param，找到所在的panel
+# def global_param2panel_id(global_param, all_panel_info):
+#     bins = torch.tensor([p["param_start"] for p in [all_panel_info[k] for k in all_panel_info]])
+#     index = torch.searchsorted(bins, torch.tensor([global_param]), right=True) - 1
+#     target_panel_id = list(all_panel_info.keys())[index]
+#     return target_panel_id
 
 # 根据输入的global_param + panel_info，找到这个global_param对应的（浮点数的）point_id，以及最近的俩 point
 def global_param2point_id(global_param, panel_info):
@@ -167,9 +167,9 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
         param_dis = param_dis_2side[min_dis_index]
 
         # 设定阈值，根据采样频率delta来动态调整阈值的大小 ---------------------------------------------------------------------------------
-        index_dis_optimize_thresh = 12   # 优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
+        index_dis_optimize_thresh = 7   # 优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
         index_dis_side_thresh = 3       # 缝边与边端点之间的阈值（小于阈值的缝边的端点将在优化时吸附到边的端点上）
-        adjust_param = 0.023 / 0.023  # 这个用于根据采样频率调整阈值的大小 [todo] 看到那个 “0.023/0.023” 了吗？后续需要在这里将采样频率考虑进来
+        adjust_param = 0.023 / 0.023  # 这个用于根据采样频率调整阈值的大小 [todo] 这是个预留接口 看到那个 “0.023/0.023” 了吗？后续需要在这里将采样频率考虑进来
         index_dis_optimize_thresh = index_dis_optimize_thresh * adjust_param
         index_dis_side_thresh = index_dis_side_thresh * adjust_param
 
@@ -260,76 +260,14 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
                 point["param"] = target_param
                 point["id"] = target_point_id
 
-        pass
-        # # [test] 仅用于测试 cal_neigbor_points_param_dis 的返回值是否正确
-        # param_dis_test = cal_neigbor_points_param_dis(pre_right_point, cur_left_point, all_panel_info)
-        # if cur_left_point['global_param'] >= pre_right_point['global_param']:
-        #     param_dis = cur_left_point['global_param'] - pre_right_point['global_param']
-        #     if param_dis_test[1] != param_dis:
-        #         a=1
-        # else:
-        #     param_dis = (current_panel_info['param_end'] - pre_right_point['global_param'] +
-        #                  cur_left_point['global_param'] - current_panel_info['param_start'])
-        #     if param_dis_test[1] != param_dis:
-        #         a=1
-
-        # [test] 仅用于测试 cal_neigbor_points_index_dis 的返回值是否正确
-        # index_dis_test = cal_neigbor_points_index_dis(pre_right_point, cur_left_point, all_panel_info)
-        # if cur_left_point['id'] >= pre_right_point['id']:
-        #     index_dis = cur_left_point['id'] - pre_right_point['id']
-        #     if index_dis_test[1] != index_dis:
-        #         raise ValueError("cal_neigbor_points_index_dis 方法的返回值有误")
-        # else:
-        #     index_dis = (current_panel_info['index_end'] - pre_right_point['id'] +
-        #                  cur_left_point['id'] - current_panel_info['index_start'])
-        #     if index_dis_test[1] != index_dis:
-        #         raise ValueError("cal_neigbor_points_index_dis 方法的返回值有误")
-        pass
-        # side_thresh = 0.08
-        # 对于 param dis 小于阈值的相邻缝合边，对它们相衔接的部分进行优化
-        # # 根据 parma_dis 来进行缝边之间的优化
-        # param_dis = cal_neigbor_points_param_dis(pre_right_point, cur_left_point, all_panel_info)[1]
-        # if abs(param_dis) < param_dis_optimize_thresh:
-        #     if cur_left_point['edge_id'] == pre_right_point['edge_id']:
-        #         # [todo] 这里的新方法可能存在问题
-        #         if pre_right_point['param'] < side_thresh or cur_left_point['param'] < side_thresh:
-        #             mid_global = math.floor(pre_right_point['global_param']) + 1e-5
-        #             mid_local = 1e-5
-        #             # if mid_local<=pre_start_point["param"]:
-        #             #     mid_global = (cur_start_point['global_param'] + pre_end_point['global_param']) / 2
-        #             #     mid_local = (cur_start_point['param'] + pre_end_point['param']) / 2
-        #         elif 1 - pre_right_point['param'] < side_thresh or 1 - cur_left_point['param'] < side_thresh:
-        #             mid_global = math.ceil(pre_right_point['global_param']) - 1e-5
-        #             mid_local = 1 - 1e-5
-        #             # if mid_local>=cur_end_point["param"]:
-        #             #     mid_global = (cur_start_point['global_param'] + pre_end_point['global_param']) / 2
-        #             #     mid_local = (cur_start_point['param'] + pre_end_point['param']) / 2
-        #         else:
-        #             mid_global = (cur_left_point['global_param'] + pre_right_point['global_param']) / 2
-        #             mid_local = (cur_left_point['param'] + pre_right_point['param']) / 2
-        #         # mid_global = (cur_start_point['global_param'] + pre_end_point['global_param']) / 2
-        #         # mid_local = (cur_start_point['param'] + pre_end_point['param']) / 2
-        #         cur_left_point['global_param'] = pre_right_point['global_param'] = mid_global
-        #         cur_left_point['param'] = pre_right_point['param'] = mid_local
-        #     elif cur_left_point['edge_id'] != pre_right_point['edge_id']:
-        #         if cur_left_point['global_param'] >= pre_right_point['global_param']:
-        #             # 如果两个属于同一边
-        #             # 不属于同一边，但这两个边是相邻的
-        #             pre_right_point['global_param'] += 1 - pre_right_point['param']
-        #             pre_right_point['param'] = 1
-        #             cur_left_point['global_param'] -= cur_left_point['param']
-        #             cur_left_point['param'] = 0
-        #         else:
-        #             pre_right_point['global_param'] += 1 - pre_right_point['param']
-        #             pre_right_point['param'] = 1
-        #             cur_left_point['global_param'] -= cur_left_point['param']
-        #             cur_left_point['param'] = 0
 
 
 def apply_stitch_param(st_eg, param):
     st_eg['clothPieceId'] = param['panel_id']
     st_eg['edgeId'] = param['edge_id']
     st_eg['param'] = param['param']
+
+
 
 def load_data(batch):
     garment_json_path = batch["garment_json_path"][0]
@@ -529,7 +467,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                             break
 
                         # === 如果被缝合点的 panel_id 没有发生变化 ===
-                        # 当前和上一个被缝合点的间距如果过大，则开新的缝合边
+                        # 当前和上一个被缝合点的间距如果过大，则开新的缝合边 [todo] 改成根据 index_dis 判断
                         thresh_side_dis = 0.6
                         if trigger:
                             # 计算两个被缝合点的双向param_dis
@@ -727,7 +665,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
 
     # 将缝合两端都完全衔接的相邻的缝合进行合并 ---------------------------------------------------------------------------------
     stitch_edge_list_merged = []  # 合并后的缝边
-    # 按所在板片进行排序后的 stitch_edge_list [todo] 如果前面计算过 stitch_edge_list_panelOrder，则把这行删掉（现在留着是为了便于删减步骤，便于作测试）
+    # 按所在板片进行排序后的 stitch_edge_list
     stitch_edge_list_panelOrder = sorted(stitch_edge_list[::2], key=lambda x: (x["start_point"]["panel_id"],))
     stitch_edge_list_paramOrder = []
     start_edge_id = stitch_edge_list_panelOrder[0]["start_point"]["panel_id"]
@@ -738,7 +676,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                 stitch_edge_list_paramOrder.append(stitch_edge)
 
             # 【此时，stitch_edge_list_paramOrder中所有的缝边都位于同一panel上】
-
             # 对这个stitch_edge_list_paramOrder根据global_param进行排序（isCC=false根据起始点排序，isCC=true根据终点点排序）
             stitch_edge_list_paramOrder = sorted(stitch_edge_list_paramOrder, key=lambda x: (x["start_point"]["global_param"] if not x["isCC"] else x["end_point"]["global_param"]))
 
@@ -788,8 +725,62 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
 
 
 
-    # [todo] 将离边端点特别近的缝边的端点进行调整 ------------------------------------------------------------------------------------
+    # 将 离边端点特别近 且 不与其它缝边相衔接 的缝边的端点 的位置进行调整 ------------------------------------------------------------------------------------
+    thresh = 5
+    adjust_param = 0.023 / 0.023  # 这个用于根据采样频率调整阈值的大小 [todo] 预留接口
+    thresh = thresh * adjust_param
 
+    stitch_edge_list_panelOrder = sorted(stitch_edge_list, key=lambda x: (x["start_point"]["panel_id"],))
+    stitch_edge_list_paramOrder = []
+    start_edge_id = stitch_edge_list_panelOrder[0]["start_point"]["panel_id"]
+    for e_idx, stitch_edge in enumerate(stitch_edge_list_panelOrder):
+        if stitch_edge["start_point"]["panel_id"] != start_edge_id or e_idx == len(stitch_edge_list_panelOrder) - 1:
+            # 如果最后一个的panel_id没变化
+            if not stitch_edge["start_point"]["panel_id"] != start_edge_id and e_idx == len(stitch_edge_list_panelOrder) - 1:
+                stitch_edge_list_paramOrder.append(stitch_edge)
+
+            # 【此时，stitch_edge_list_paramOrder中所有的缝边都位于同一panel上】
+            # 对这个stitch_edge_list_paramOrder根据global_param进行排序（isCC=false根据起始点排序，isCC=true根据终点点排序）
+            stitch_edge_list_paramOrder = sorted(stitch_edge_list_paramOrder, key=lambda x: (x["start_point"]["global_param"] if not x["isCC"] else x["end_point"]["global_param"]))
+
+            # 对同一panel上的缝边，尝试合并它们 ------------------------------------------------------------------------------
+            for se_idx, start_stitch_edge in enumerate(stitch_edge_list_paramOrder):
+                if se_idx == 0:
+                    start_stitch_edge_previous = stitch_edge_list_paramOrder[-1]
+                else:
+                    start_stitch_edge_previous = stitch_edge_list_paramOrder[se_idx - 1]
+
+                # === 获取两个边的可能衔接的部分 ===
+                # 定义：right是位于相对顺时针的方向，left是位于相对逆时针的方向
+                pre_right_key = "end_point" if not start_stitch_edge_previous["isCC"] else "start_point"
+                cur_left_key = "start_point" if not start_stitch_edge["isCC"] else "end_point"
+                pre_right_point = start_stitch_edge_previous[pre_right_key]  # 上一条边的两个端点中，处于相对顺时针方向的点
+                cur_left_point = start_stitch_edge[cur_left_key]  # 当前边的两个端点中，处于相对逆时针方向的点
+
+                # 如果相邻缝边间距较大
+                st_index_dis_d = cal_neigbor_points_index_dis(pre_right_point, cur_left_point, all_panel_info)
+                if st_index_dis_d and min(st_index_dis_d) > thresh:
+                    for point in [pre_right_point, cur_left_point]:
+                        edge = all_edge_info[point["edge_id"]]
+                        edge_side_point = [edge["points_info"][0], edge["points_info"][-1]]
+                        # 缝边端点 到 所在边的两个端点 的距离
+                        side_point_index_dis = [
+                            min(cal_neigbor_points_index_dis(point, edge_side_point[0],  all_panel_info)),
+                            min(cal_neigbor_points_index_dis(point, edge_side_point[1], all_panel_info)),
+                        ]
+                        # 获取 前一条缝边的右点 和 当前缝边的左点 离各自边上两个端点的距离
+                        side_point_index_dis_index = 0 if side_point_index_dis[0] < side_point_index_dis[1] else 1
+                        if 0 < side_point_index_dis[side_point_index_dis_index] <= thresh:
+                            closed_side_point = edge_side_point[side_point_index_dis_index]
+                            point["id"] = closed_side_point["id"]
+                            point["param"] = closed_side_point["param"]
+                            point["global_param"] = closed_side_point["global_param"]
+
+            # 切换到下一个 panel
+            start_edge_id = stitch_edge["start_point"]["panel_id"]
+            stitch_edge_list_paramOrder = [stitch_edge]
+        else:
+            stitch_edge_list_paramOrder.append(stitch_edge)
 
 
 
