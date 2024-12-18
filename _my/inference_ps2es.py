@@ -1,4 +1,7 @@
-# 本文件在inference_DYdata的基础上修改，用于获得边边缝合关系
+# first inference point stitch，then obtain edge stitch
+
+
+
 import os.path
 
 from model import build_model
@@ -62,7 +65,8 @@ if __name__ == "__main__":
                                 filter_too_small=True, filter_logits=0.2,
                                 only_triu=True, filter_uncontinue=False,
                                 show_pc_cls=False, show_stitch=False))
-        # # 优化缝合关系【OPTIONAL】
+
+        # # 优化缝合关系【OPTIONAL】[有问题，而且不是很必要。。。]
         # optimized_stitch_indices = optimize_pointstitch(batch, inf_rst, stitch_mat_full, stitch_indices_full, show_stitch = True)
 
         # 从点点缝合关系获取边边缝合关系 -------------------------------------------------------------------------------------

@@ -1,3 +1,7 @@
+# inference point stitch
+
+
+
 from model import build_model
 from dataset import build_stylexd_dataloader_test, build_stylexd_dataloader_train_val
 
