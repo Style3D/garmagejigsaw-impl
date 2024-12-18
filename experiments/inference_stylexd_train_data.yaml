@@ -42,6 +42,9 @@ CALLBACK:
 
 DATA:
   DATA_DIR: "data/stylexd_jigsaw"
+  DATA_TYPES:
+    TEST: ["StyleGen"]  # mul-selections:["StyleGen", "StyleGenML", "Brep128", "Brep256", "Brep512", "Brep1024"]
+
   NUM_PC_POINTS: 2000
 
   SHUFFLE: True  # 打乱dataset

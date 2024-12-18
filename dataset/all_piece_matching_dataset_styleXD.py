@@ -33,6 +33,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             self,
             data_dir,
             data_keys,
+            data_types = (),
             category="all",
             num_points=1000,
             min_num_part=2,
@@ -65,7 +66,14 @@ class AllPieceMatchingDataset_stylexd(Dataset):
 
         self.mode = mode
         self.data_dir = data_dir
-        self.data_list = self._read_data()[:10000]
+        self.data_types = data_types
+        self.data_list = self._read_data()
+        if self.mode=="train":
+            self.data_list = self.data_list[:10000]
+        elif self.mode=="val":
+            self.data_list = self.data_list[10000:]
+        elif self.mode=="test":
+            self.data_list = self.data_list
 
         try:
             with open(os.path.join(data_dir,self.mode,"data_info.json"), "r", encoding="utf-8") as f:
@@ -130,9 +138,22 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         return self.length
 
     def _read_data(self):
-        mesh_dir = os.path.join(self.data_dir, self.mode)
-        data_list = sorted(glob(os.path.join(mesh_dir, "garment_*")))
-        return data_list
+        if self.mode in ["train", "val"]:
+            mesh_dir = os.path.join(self.data_dir, self.mode)
+            data_list = sorted(glob(os.path.join(mesh_dir, "garment_*")))
+            return data_list
+        # [todo] 根据数据类型读取不同的数据去inference
+        if self.mode == "test":
+            assert len(self.data_types)!=0, "self.data_types can't be empty in inference."
+            self.data_types = list(dict.fromkeys(self.data_types))  # 去除重复
+            data_list = []
+            for type_name in self.data_types:
+                mesh_dir = os.path.join(self.data_dir, self.mode)
+                mesh_dir = os.path.join(mesh_dir, type_name)
+                assert os.path.exists(mesh_dir), f"No data folder corresponding to data_types:{self.data_types}"
+                data_list.extend(sorted(glob(os.path.join(mesh_dir, "garment_*"))))
+            return data_list
+
 
     # 用于训练inference董远数据的模型
     # random scale+rotate+move panel (default)
@@ -951,6 +972,7 @@ def build_stylexd_dataloader_test(cfg):
         mode="test",
         data_dir=cfg.DATA.DATA_DIR,
         data_keys=cfg.DATA.DATA_KEYS,
+        data_types=cfg.DATA.DATA_TYPES.TEST,
 
         num_points=cfg.DATA.NUM_PC_POINTS,
         min_num_part=cfg.DATA.MIN_NUM_PART,

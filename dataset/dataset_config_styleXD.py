@@ -10,6 +10,9 @@ __C.STYLEXD = edict()
 __C.STYLEXD.DATA_DIR = "data/obj_format_part_under20"
 __C.STYLEXD.DATA_KEYS = ("part_sids",)
 
+__C.STYLEXD.DATA_TYPES = edict()
+__C.STYLEXD.DATA_TYPES.TEST = []  # 多选["StyleGen", "StyleGenML", "Brep128", "Brep256", "Brep512", "Brep1024"]
+
 __C.STYLEXD.SHUFFLE = True
 
 
