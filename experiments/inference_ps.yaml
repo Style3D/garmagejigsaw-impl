@@ -26,6 +26,11 @@ TRAIN:
   VAL_EVERY: 5
 
 MODEL:
+#  USE_POINT_FEATURE: True   # 是否提取点特征
+#  USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
+#  USE_GLOBAL_POINT_FEATURE: False  # 是否提取点的全局特征
+#  USE_UV_FEATURE: False     # 是否提取UV特征
+#  TF_LAYER_NUM: 1  # PT层的数量
   PC_CLS_THRESHOLD: 0.5
   LOSS:
     w_cls_loss: 0.0
