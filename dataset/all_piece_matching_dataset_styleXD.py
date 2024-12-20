@@ -75,8 +75,6 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         elif self.mode=="test":
             self.data_list = self.data_list
 
-        self.data_list = self.data_list[::300]
-
         try:
             with open(os.path.join(data_dir,self.mode,"data_info.json"), "r", encoding="utf-8") as f:
                 self.data_info = json.load(f)
@@ -998,7 +996,7 @@ def build_stylexd_dataloader_test(cfg):
         overfit=cfg.DATA.OVERFIT,
         min_part_point=cfg.DATA.MIN_PART_POINT,
 
-        read_uv=cfg.MODEL.USE_UV_FEATURE,
+        read_uv=True,
     )
     test_set = AllPieceMatchingDataset_stylexd(**data_dict)
     test_loader = DataLoader(

@@ -8,7 +8,7 @@ from model import build_model
 from dataset import build_stylexd_dataloader_test
 
 from utils import  to_device, get_pointstitch, pointstitch_2_edgestitch
-from utils import pointcloud_visualize, pointcloud_and_stitch_visualize, pointcloud_and_stitch_logits_visualize
+from utils import pointcloud_visualize, pointcloud_and_stitch_visualize, pointcloud_and_stitch_logits_visualize, composite_visualize
 from utils.inference.save_result import save_result
 
 if __name__ == "__main__":
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
         # 获取点点缝合关系 -------------------------------------------------------------------------------------------------
         if data_type == "StyleGen":
-            stitch_mat_full, stitch_indices_full = (
+            stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="sym_max", mat_choice="col_max",
                                 filter_neighbor_stitch=True, filter_neighbor = 7,
@@ -47,7 +47,7 @@ if __name__ == "__main__":
                                 only_triu=True, filter_uncontinue=False,
                                 show_pc_cls=False, show_stitch=True))
         elif data_type == "StyleGen_multilayer":
-            stitch_mat_full, stitch_indices_full = (
+            stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="sym_max", mat_choice="col_max",
                                 filter_neighbor_stitch=True, filter_neighbor = 5,
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                                 only_triu=True, filter_uncontinue=False,
                                 show_pc_cls=False, show_stitch=False))
         elif data_type == "brep_reso_128":
-            stitch_mat_full, stitch_indices_full = (
+            stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="sym_max", mat_choice="col_max",
                                 filter_neighbor_stitch=True, filter_neighbor = 3,
@@ -75,10 +75,11 @@ if __name__ == "__main__":
                                                 param_dis_optimize_thresh=0.9)
         garment_json = edgestitch_results["garment_json"]
 
+        # 保存可视化结果 ---------------------------------------------------------------------------------------------------
+        fig_comp = composite_visualize(batch, inf_rst, stitch_indices_full, logits)
+
+
         # 保存结果 -------------------------------------------------------------------------------------------------------
         save_dir = "_tmp/garment_json_output"
-        os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f"garment_"+f"{int(batch['data_id'])}".zfill(5)+".json")
-        save_result(garment_json, save_path)
-        a=1
+        save_result(save_dir, data_id=int(batch['data_id']), garment_json=garment_json, fig=fig_comp)
         # input("Press ENTER to continue")
