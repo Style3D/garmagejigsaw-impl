@@ -345,9 +345,12 @@ class AllPieceMatchingDataset_stylexd(Dataset):
 
     def sample_point_byBoundaryPcs(self, meshes, num_points):
         pcs = [np.array(mesh.vertices) for mesh in meshes]
+        num_parts = len(pcs)
         piece_id = np.concatenate([[idx]*len(pcs[idx]) for idx in range(len(pcs))], axis=0)
+        pcs_normalized, normalize_range = min_max_normalize(np.concatenate(pcs))
+        pcs = [pcs_normalized[piece_id==panel_idx] for panel_idx in range(num_parts)]
         nps = np.array([len(pc) for pc in pcs])
-        mean_edge_len = 0.0072
+        mean_edge_len = 0.0072/normalize_range
         sample_result =dict(
             pcs=pcs,
             piece_id=piece_id,

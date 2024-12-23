@@ -184,9 +184,9 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
         )
     fig.update_layout(
         height=1400, width=2400, title_text="Garment",
-        scene_camera =  dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.2, z=1.2)),
-        scene2_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.2, z=1.2)),
-        scene3_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.2, z=1.2)),
+        scene_camera =  dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
+        scene2_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
+        scene3_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
         scene=scene_dict,
         scene2=scene_dict,
         scene3=scene_dict,
