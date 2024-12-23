@@ -627,4 +627,9 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
         stitch_edge_json_list.append(stitch_edge_json)
 
     garment_json["stitches"] = stitch_edge_json_list
-    return garment_json
+
+    results = {
+        "garment_json":garment_json,
+        }
+
+    return results

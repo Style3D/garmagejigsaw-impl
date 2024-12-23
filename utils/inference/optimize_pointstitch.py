@@ -5,6 +5,7 @@ from utils import pointcloud_and_stitch_visualize
 
 def optimize_pointstitch(batch, inf_rst, stitch_mat, stitch_indices,
                          show_stitch = False):
+    raise NotImplementedError
 
     device_ = stitch_indices.device
     pcs = batch["pcs"][0]

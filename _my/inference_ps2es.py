@@ -69,10 +69,11 @@ if __name__ == "__main__":
         # optimized_stitch_indices = optimize_pointstitch(batch, inf_rst, stitch_mat_full, stitch_indices_full, show_stitch = True)
 
         # 从点点缝合关系获取边边缝合关系 -------------------------------------------------------------------------------------
-        garment_json = pointstitch_2_edgestitch(batch, inf_rst,
+        edgestitch_results = pointstitch_2_edgestitch(batch, inf_rst,
                                                 stitch_mat_full, stitch_indices_full,
                                                 unstitch_thresh=15, fliter_len=3,
                                                 param_dis_optimize_thresh=0.9)
+        garment_json = edgestitch_results["garment_json"]
 
         # 保存可视化结果 ---------------------------------------------------------------------------------------------------
         fig_comp = composite_visualize(batch, inf_rst, stitch_indices_full, logits)

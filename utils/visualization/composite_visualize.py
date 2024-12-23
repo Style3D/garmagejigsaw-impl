@@ -16,7 +16,7 @@ from plotly.subplots import make_subplots
 
 
 
-def composite_visualize(batch, inf_rst, stitch_indices_full, logits):
+def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, choice=(tuple([True]*3),tuple([True]*3))):
     """
     :param batch:       dataset output with 1 batch_size
     :param inf_rst:     inference result of model
@@ -29,7 +29,8 @@ def composite_visualize(batch, inf_rst, stitch_indices_full, logits):
     piece_id = batch["piece_id"].squeeze(0).detach().cpu().numpy()
     part_masks = [piece_id == part_idx for part_idx in range(num_parts)]
     pc_cls_mask = inf_rst["pc_cls_mask"].squeeze(0).detach().cpu().numpy()
-    stitch_indices_full = stitch_indices_full.detach().cpu().numpy()
+    if stitch_indices_full is not None:
+        stitch_indices_full = stitch_indices_full.detach().cpu().numpy()
 
     # === fig的布局设置 ===
     fig = make_subplots(
@@ -51,121 +52,127 @@ def composite_visualize(batch, inf_rst, stitch_indices_full, logits):
 
     # 往fig的不同subplot里添加各种go ------------------------------------------------------------------
     # === Original Boundary Points ===
-    for part_idx in range(num_parts):
-        part_color = mcolors.to_hex(part_colors(part_idx))
-        pts = pcs[part_masks[part_idx]]
-        fig.add_trace(go.Scatter3d(
-            x=pts[:, 0],
-            y=pts[:, 1],
-            z=pts[:, 2],
-            mode='markers',
-            name='s%02d_xyz' % part_idx,
-            marker=dict(
-                size=2,
-                color=part_color,
-                opacity=0.8
-            )
-        ), row=1, col=1)
+    if choice[0][0]:
+        for part_idx in range(num_parts):
+            part_color = mcolors.to_hex(part_colors(part_idx))
+            pts = pcs[part_masks[part_idx]]
+            fig.add_trace(go.Scatter3d(
+                x=pts[:, 0],
+                y=pts[:, 1],
+                z=pts[:, 2],
+                mode='markers',
+                name='s%02d_xyz' % part_idx,
+                marker=dict(
+                    size=2,
+                    color=part_color,
+                    opacity=0.8
+                )
+            ), row=1, col=1)
 
     # === Classified Boundary Pointd ===
-    for cls_idx in range(2):
-        part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
-        cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
-        pts = pcs[cls_mask]
-        fig.add_trace(go.Scatter3d(
-            x=pts[:, 0],
-            y=pts[:, 1],
-            z=pts[:, 2],
-            mode='markers',
-            name='s%02d_xyz' % part_idx,
-            marker=dict(
-                size=2,
-                color=part_color,
-                opacity=0.8
-            )
-        ), row=1, col=2)
+    if choice[0][1]:
+        for cls_idx in range(2):
+            part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
+            cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
+            pts = pcs[cls_mask]
+            fig.add_trace(go.Scatter3d(
+                x=pts[:, 0],
+                y=pts[:, 1],
+                z=pts[:, 2],
+                mode='markers',
+                name='s%02d_xyz' % part_idx,
+                marker=dict(
+                    size=2,
+                    color=part_color,
+                    opacity=0.8
+                )
+            ), row=1, col=2)
 
     # === Point Stitch ===
-    # Point
-    for cls_idx in range(2):
-        part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
-        cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
-        pts = pcs[cls_mask]
-        fig.add_trace(go.Scatter3d(
-            x=pts[:, 0],
-            y=pts[:, 1],
-            z=pts[:, 2],
-            mode='markers',
-            name='s%02d_xyz' % part_idx,
-            marker=dict(
-                size=2,
-                color=part_color,
-                opacity=0.8
-            )
-        ), row=1, col=3)
-    # Stitch
-    color_norm = mcolors.Normalize(vmin=0, vmax=1)
-    for i, pair in enumerate(stitch_indices_full):
-        color = mcolors.to_hex(stitch_logits_colors(color_norm(logits[i])))
-        pts = pcs[np.array(pair)]
-        x,y,z = pts[:, 0], pts[:, 1], pts[:, 2]
-        fig.add_trace(go.Scatter3d(
-            x=[x[0], x[1]],
-            y=[y[0], y[1]],
-            z=[z[0], z[1]],
-            mode='lines',
-            line=dict(
-                color=color,
-                width=4
-            ),
-            showlegend=False
-        ), row=1, col=3)
+    if choice[0][2] and stitch_indices_full is not None:
+        # Point
+        for cls_idx in range(2):
+            part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
+            cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
+            pts = pcs[cls_mask]
+            fig.add_trace(go.Scatter3d(
+                x=pts[:, 0],
+                y=pts[:, 1],
+                z=pts[:, 2],
+                mode='markers',
+                name='s%02d_xyz' % part_idx,
+                marker=dict(
+                    size=2,
+                    color=part_color,
+                    opacity=0.8
+                )
+            ), row=1, col=3)
+        # Stitch
+        color_norm = mcolors.Normalize(vmin=0, vmax=1)
+        for i, pair in enumerate(stitch_indices_full):
+            color = mcolors.to_hex(stitch_logits_colors(color_norm(logits[i])))
+            pts = pcs[np.array(pair)]
+            x,y,z = pts[:, 0], pts[:, 1], pts[:, 2]
+            fig.add_trace(go.Scatter3d(
+                x=[x[0], x[1]],
+                y=[y[0], y[1]],
+                z=[z[0], z[1]],
+                mode='lines',
+                line=dict(
+                    color=color,
+                    width=4
+                ),
+                showlegend=False
+            ), row=1, col=3)
 
     # === Geometry Image ===
-    geo_fp = os.path.join(batch["mesh_file_path"][0], "original_data", "xyz.pkl")
-    mask_fp = os.path.join(batch["mesh_file_path"][0], "original_data", "mask.pkl")
-    with open(geo_fp, 'rb') as geo_f, open(mask_fp, 'rb') as mask_f:
-        geo = pickle.load(geo_f).transpose(0,3,1,2)
-        mask = pickle.load(mask_f).transpose(0,3,1,2)
+    if choice[1][0]:
+        geo_fp = os.path.join(batch["mesh_file_path"][0], "original_data", "xyz.pkl")
+        mask_fp = os.path.join(batch["mesh_file_path"][0], "original_data", "mask.pkl")
+        with open(geo_fp, 'rb') as geo_f, open(mask_fp, 'rb') as mask_f:
+            geo = pickle.load(geo_f).transpose(0,3,1,2)
+            mask = pickle.load(mask_f).transpose(0,3,1,2)
 
-    grid_imgs = make_grid(torch.cat([torch.FloatTensor((geo + 1.0) * 0.5), torch.FloatTensor(mask)], dim=1),
-                          nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5)
-    grid_imgs = grid_imgs.permute(1, 2, 0).cpu().numpy()
-    grid_imgs = np.concatenate([grid_imgs[:, :, :3], np.repeat(grid_imgs[:, :, -1:], 3, axis=-1)], axis=0)
-    fig.add_trace(px.imshow(grid_imgs).data[0], row=2, col=1)
+        grid_imgs = make_grid(torch.cat([torch.FloatTensor((geo + 1.0) * 0.5), torch.FloatTensor(mask)], dim=1),
+                              nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5)
+        grid_imgs = grid_imgs.permute(1, 2, 0).cpu().numpy()
+        grid_imgs = np.concatenate([grid_imgs[:, :, :3], np.repeat(grid_imgs[:, :, -1:], 3, axis=-1)], axis=0)
+        fig.add_trace(px.imshow(grid_imgs).data[0], row=2, col=1)
 
     # === Original UV ===
-    for part_idx in range(num_parts):
-        part_color = mcolors.to_hex(part_colors(part_idx))
-        pts_uv = uv[part_masks[part_idx]]
-        fig.add_trace(go.Scatter(
-            x=pts_uv[:, 0],
-            y=pts_uv[:, 1],
-            mode='markers',
-            name='s%02d_uv' % part_idx,
-            marker=dict(
-                size=3,
-                color=part_color,
-                opacity=0.8
-            )
-        ), row=2, col=2)
+    if choice[1][1]:
+        for part_idx in range(num_parts):
+            part_color = mcolors.to_hex(part_colors(part_idx))
+            pts_uv = uv[part_masks[part_idx]]
+            fig.add_trace(go.Scatter(
+                x=pts_uv[:, 0],
+                y=pts_uv[:, 1],
+                mode='markers',
+                name='s%02d_uv' % part_idx,
+                marker=dict(
+                    size=3,
+                    color=part_color,
+                    opacity=0.8
+                )
+            ), row=2, col=2)
 
     # === Classified UV ===
-    for cls_idx in range(2):
-        part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
-        cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
-        pts_uv = uv[cls_mask]
-        fig.add_trace(go.Scatter(
-            x=pts_uv[:, 0],
-            y=pts_uv[:, 1],
-            mode='markers',
-            name='s%02d_uv' % part_idx,
-            marker=dict(
-                size=3,
-                color=part_color,
-                opacity=0.8
-            )
-        ), row=2, col=3)
+    if choice[1][2]:
+        for cls_idx in range(2):
+            part_color = mcolors.to_hex(cls_colors(cls_color_norm(cls_idx)))
+            cls_mask = pc_cls_mask==1 if cls_idx==0 else pc_cls_mask==0
+            pts_uv = uv[cls_mask]
+            fig.add_trace(go.Scatter(
+                x=pts_uv[:, 0],
+                y=pts_uv[:, 1],
+                mode='markers',
+                name='s%02d_uv' % part_idx,
+                marker=dict(
+                    size=3,
+                    color=part_color,
+                    opacity=0.8
+                )
+            ), row=2, col=3)
 
     # fig的设置 ------------------------------------------------------------------------------------
     scene_dict = dict(
