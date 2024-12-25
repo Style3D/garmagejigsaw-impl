@@ -85,7 +85,6 @@ def cal_neigbor_points_param_dis(start_point, end_point, all_panel_info):
     return param_dis
 
 def optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_optimize_thresh, all_panel_info):
-    # [todo] 让param_dis_optimize_thresh根据所属边上的点数进行相应的变化（边越长越接近原本的数，越短越倾向于让两个边的邻近点去合并）
     side_thresh = 0.08
     current_panel_info = all_panel_info[stitch_edge_list_paramOrder[0]['start_point']['panel_id']]
     for se_idx, stitch_edge in enumerate(stitch_edge_list_paramOrder):
@@ -113,11 +112,9 @@ def optimize_stitch_edge_list_paramOrder(stitch_edge_list_paramOrder, param_dis_
             param_dis = (current_panel_info['param_end'] - pre_end_point['global_param'] +
                          cur_start_point['global_param'] - current_panel_info['param_start'])
 
-        a = 1
         # 对于 param dis 小于阈值的相邻缝合边，对它们相衔接的部分进行优化
         if abs(param_dis) < param_dis_optimize_thresh:
             if cur_start_point['edge_id'] == pre_end_point['edge_id']:
-                # [todo] 这里的新方法可能存在问题
                 if pre_end_point['param'] < side_thresh or cur_start_point['param'] < side_thresh:
                     mid_global = math.floor(pre_end_point['global_param'])
                     mid_local = 0
@@ -365,8 +362,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                                     stitch_points_list = all_stitch_points_list.pop(idx_rel)
                                     break
 
-                                a=1
-
                             if not stitch_points_list:
                                 stitch_points_list = []
                             stitch_points_list.append([point_info, point_info_cor])
@@ -397,7 +392,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                             param_dis_d = np.array(param_dis_d)
                             near = int(np.argmin(param_dis_d))
                             far = int(np.argmax(param_dis_d))
-                            a=1
+
                             # [todo] 第一个append近的，第二个append远的
                             stitch_points_list.append([point_info, [point_info_cor[near]]])
                             # all_stitch_points_list.append(stitch_points_list)
@@ -569,7 +564,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
             stitch_edge_list_paramOrder = [stitch_edge]
         else:
             stitch_edge_list_paramOrder.append(stitch_edge)
-    a=1
 
     # 处理离端点较近的点 ---------------------------------------------------------------------------------------------------
     thresh = 0.2
@@ -584,7 +578,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
     pass
 
     # 将长度特别短的缝边删除 ------------------------------------------------------------------------------------------------
-    # 计算缝边的长度 [todo]这一步有点问题，删不干净
     thresh = 0.08
 
     filtered_stitch_edge_list = []

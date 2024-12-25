@@ -170,7 +170,7 @@ def get_pointstitch(batch, inf_rst,
         pointcloud_and_stitch_logits_visualize(pcs, stitch_indices_full.detach().cpu().numpy(), logits,
                                                title=f"predict stitch(threshold={pc_stitch_threshold}) in all points", )
 
-    # [export]
+    # export data
     if export_vis_result:
         pointcloud_and_stitch_logits_visualize(pcs,
                             stitch_indices_full.detach().cpu().numpy(), logits,
@@ -180,15 +180,4 @@ def get_pointstitch(batch, inf_rst,
     stitch_mat_full.to(pcs.device)
     stitch_indices_full = torch.tensor(stitch_indices_full, device=pcs.device, dtype=torch.int64)
 
-    """
-    # [todo] 记得删了
-    if batch["data_id"] == 5:
-        pointcloud_visualize([stitch_pcs, unstitch_pcs],
-                             title=f"predict pcs classify",
-                             colormap='cool', colornum=20, color_norm=[0, 1])
-        pointcloud_and_stitch_logits_visualize(pcs, stitch_indices_full.detach().cpu().numpy(), logits,
-                                               title=f"predict stitch(threshold={pc_stitch_threshold}) in all points", )
-        a=1
-
-    """
     return stitch_mat_full, stitch_indices_full, logits

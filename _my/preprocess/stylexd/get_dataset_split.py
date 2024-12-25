@@ -44,6 +44,20 @@ def filter_toosmallpanel(garment_list, min_panel_boundary_len):
             filtered_list.append(garment_dir)
     return filtered_list
 
+def filter_by_list(garment_list, list_file_path):
+    if list_file_path is None or not os.path.exists(list_file_path):
+        print("list_file not exist")
+        return garment_list
+    filtered_list = []
+    with open(list_file_path, "r", encoding="utf-8") as f:
+        list_f = json.load(f)
+    for garment_dir in garment_list:
+        if garment_dir in list_f:
+            continue
+        filtered_list.append(garment_dir)
+    return filtered_list
+
+
 if __name__ == "__main__":
     max_panel_num = 64
     min_panel_boundary_len = 16
@@ -61,6 +75,9 @@ if __name__ == "__main__":
 
     # 仅保留文件名
     filtered_garments_dir = [os.path.basename(dir_) for dir_ in filtered_garments_dir]
+
+    # 删除自定义列表中有的
+    filtered_garments_dir = filter_by_list(filtered_garments_dir, list_file_path = "_my/preprocess/stylexd/filter_list.json")
 
     # 计算每一批数据在筛选完后还有多少
     Q1_num, Q2_num, Q4_num = 0,0,0

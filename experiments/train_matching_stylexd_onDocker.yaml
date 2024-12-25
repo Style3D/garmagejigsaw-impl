@@ -14,7 +14,7 @@ WANDB:
 
 GPUS: [0, 1]
 BATCH_SIZE: 15
-NUM_WORKERS: 10
+NUM_WORKERS: 15
 
 TRAIN:
   NUM_EPOCHS: 120
@@ -30,8 +30,8 @@ MODEL:
   USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
   USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
   USE_UV_FEATURE: True      # 是否提取UV特征
-  TF_LAYER_NUM: 5  # PT层的数量
-  USE_TF_BLOCK: False  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
+  TF_LAYER_NUM: 2  # PT层的数量
+  USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
   IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   PC_CLS_THRESHOLD: 0.5
   LOSS:
@@ -51,7 +51,7 @@ DATA:
 
   SHUFFLE: True  # 打乱dataset
 
-  MAX_NUM_PART: 33
+  MAX_NUM_PART: 64
   MIN_PART_POINT: 10
 
   PCS_SAMPLE_TYPE:  # 在Panel上采样的方式
@@ -61,11 +61,11 @@ DATA:
 
   SHRINK_MESH:
     TRAIN: True
-    VAL: False
+    VAL: True
     TEST: False
   SHRINK_MESH_PARAM:
     TRAIN: 0.8
-    VAL: 1
+    VAL: 0.8
     TEST: 1
 
   PCS_NOISE_TYPE: default  # default  normal

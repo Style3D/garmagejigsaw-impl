@@ -49,6 +49,7 @@ DATA:
 
   NUM_PC_POINTS: 1500
 
+  # [todo] 训练时改成True
   SHUFFLE: True  # 打乱dataset
 
   MAX_NUM_PART: 64
@@ -61,11 +62,11 @@ DATA:
 
   SHRINK_MESH:
     TRAIN: True
-    VAL: False
+    VAL: True
     TEST: False
   SHRINK_MESH_PARAM:
-    TRAIN: 0.9
-    VAL: 1
+    TRAIN: 0.8
+    VAL: 0.8
     TEST: 1
 
   PCS_NOISE_TYPE: default  # default  normal

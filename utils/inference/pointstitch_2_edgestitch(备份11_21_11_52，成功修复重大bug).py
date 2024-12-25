@@ -375,14 +375,10 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
             order_sum = 0
             for sp_idx, st_point in enumerate(stitch_points_list):
                 if sp_idx == 0: continue
-                # [todo] 两种计算ord的方法二选一
 
-                # 方法1：根据下一个点的循环global_param上的距离来判断ord
+                # 根据下一个点的循环global_param上的距离来判断ord
                 param_dis =  calculate_param_distance(stitch_points_list[sp_idx - 1][i], st_point[i], all_panel_info)
                 ord = 1 if param_dis[1] < param_dis[0] else -1
-                # # 方法2：根据和下一个点的global_param上的距离来判断ord
-                # ord = st_point[i]["global_param"] - stitch_points_list[sp_idx - 1][i]["global_param"]
-                # ord = 1 if ord >= 0 else -1
                 order_sum += ord
             # order_sum>=0时，我们认为这个缝边是顺时针的
             isCC_order_list[-1][i] = order_sum < 0
