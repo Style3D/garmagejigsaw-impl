@@ -134,7 +134,7 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
             mask = pickle.load(mask_f).transpose(0,3,1,2)
 
         grid_imgs = make_grid(torch.cat([torch.FloatTensor((geo + 1.0) * 0.5), torch.FloatTensor(mask)], dim=1),
-                              nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5)
+                              nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5, pad_value=1.)
         grid_imgs = grid_imgs.permute(1, 2, 0).cpu().numpy()
         grid_imgs = np.concatenate([grid_imgs[:, :, :3], np.repeat(grid_imgs[:, :, -1:], 3, axis=-1)], axis=0)
         fig.add_trace(px.imshow(grid_imgs).data[0], row=2, col=1)
@@ -175,22 +175,50 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
             ), row=2, col=3)
 
     # fig的设置 ------------------------------------------------------------------------------------
-    scene_dict = dict(
-            xaxis=dict(range=[-1.5, 1.5]),
-            yaxis=dict(range=[-1.5, 1.5]),
-            zaxis=dict(range=[-1.5, 1.5]),
+    scene_dict_3d = dict(
             aspectmode='manual',
-            aspectratio=dict(x=1, y=1, z=1)
+            aspectratio=dict(x=1, y=1, z=1),
+            xaxis=dict(range=[-1.5, 1.5], visible=False),  # 隐藏x轴
+            yaxis=dict(range=[-1.5, 1.5], visible=False),  # 隐藏y轴
+            zaxis=dict(range=[-1.5, 1.5], visible=False),  # 隐藏z轴
+            xaxis_title=None,  # 移除x轴标题
+            yaxis_title=None,  # 移除y轴标题
+            zaxis_title=None,  # 移除z轴标题
+            bgcolor='rgba(0,0,0,0)',  # 设置背景为透明
+        )
+    scene_dict_2d = dict(
+            aspectmode='manual',
+            aspectratio=dict(x=1, y=1, z=1),
+            xaxis=dict(range=[-1.5, 1.5], visible=False, showgrid = False, ),  # 隐藏x轴
+            yaxis=dict(range=[-1.5, 1.5], visible=False, showgrid = False, ),  # 隐藏y轴
+            xaxis_title=None,  # 移除x轴标题
+            yaxis_title=None,  # 移除y轴标题
+            bgcolor='rgba(0,0,0,0)',  # 设置背景为透明
         )
     fig.update_layout(
         height=1400, width=2400, title_text="Garment",
         scene_camera =  dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
         scene2_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
         scene3_camera = dict(up=dict(x=0, y=1, z=0), center=dict(x=0, y=0, z=0), eye=dict(x=0, y=0.1, z=0.5)),
-        scene=scene_dict,
-        scene2=scene_dict,
-        scene3=scene_dict,
+        scene=scene_dict_3d,
+        scene2=scene_dict_3d,
+        scene3=scene_dict_3d,
+        scene4=scene_dict_2d,
+        scene5=scene_dict_2d,
+        scene6=scene_dict_2d,
+
+        xaxis4=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene4 x轴
+        yaxis4=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene4 y轴
+        xaxis5=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene5 x轴
+        yaxis5=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene5 y轴
+        xaxis6=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene6 x轴
+        yaxis6=dict(range=[-1.5, 1.5], showgrid=False, visible=False),  # scene6 y轴
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+
     )
+
+
     return fig
     # n_surfs = surfPos.shape[0]
     # colors = plt.get_cmap('rainbow', n_surfs)
