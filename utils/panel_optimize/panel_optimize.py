@@ -80,14 +80,10 @@ def get_pcs_selected(pcs_list):
     :param pcs_list:
     :return:
     """
-    multiple=2.5
     result_pcs_list=[]
-    # 对每个Panel，用退火法选取一部分顶点，用于后续优化位置
     for idx, pcs in enumerate(pcs_list):
         pcs_cur = pcs
         pcs_bkg = torch.concat([pcs for i, pcs in enumerate(pcs_list) if i != idx], dim=-2)
-
-        k = max(20, int(pcs.shape[0]/3))  # 最近点个数
 
         A_expanded = pcs_cur.unsqueeze(1)
         B_expanded = pcs_bkg.unsqueeze(0)
@@ -98,14 +94,12 @@ def get_pcs_selected(pcs_list):
 
         nearest_distances, nearest_indices_A = torch.topk(min_distances, pcs_cur.shape[0], largest=False)
 
-        nearest_indices_B = min_indices_B[nearest_indices_A]
-
         mask = nearest_distances < 0.12
 
         result_pcs_list.append(pcs_cur[nearest_indices_A[mask]])
     return result_pcs_list
 
-def panel_optimize(pcs_list):
+def panel_optimize(pcs_list, max_iter_t = 100, max_iter_s = 120, target_dis = 0., filter_distance = 0.12):
 
     pcs_list_selected = get_pcs_selected(pcs_list)
 

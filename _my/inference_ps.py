@@ -34,4 +34,4 @@ if __name__ == "__main__":
         garment_dir = os.path.join("_tmp/inference_ps_output", "garment_"+f"{g_idx}".zfill(5))
         os.makedirs(garment_dir, exist_ok=True)
         fig_comp.write_html(os.path.join(garment_dir,"vis.html"))
-        input("Press ENTER to continue")
+        # input("Press ENTER to continue")
