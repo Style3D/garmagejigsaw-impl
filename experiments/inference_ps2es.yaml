@@ -31,7 +31,7 @@ MODEL:
 #  USE_GLOBAL_POINT_FEATURE: False  # 是否提取点的全局特征
 #  USE_UV_FEATURE: False     # 是否提取UV特征
 #  TF_LAYER_NUM: 1  # PT层的数量
-  PC_CLS_THRESHOLD: 0.5
+  PC_CLS_THRESHOLD: 0.1
   LOSS:
     w_cls_loss: 0.0
     w_mat_loss: 0.0

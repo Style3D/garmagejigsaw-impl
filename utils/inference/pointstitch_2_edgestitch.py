@@ -167,14 +167,15 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
         param_dis = param_dis_2side[min_dis_index]
 
         # 设定阈值，根据采样频率delta来动态调整阈值的大小 ---------------------------------------------------------------------------------
-        index_dis_optimize_thresh = 7   # 优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
+        index_dis_optimize_thresh = 9   # 优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
         index_dis_side_thresh = 3       # 缝边与边端点之间的阈值（小于阈值的缝边的端点将在优化时吸附到边的端点上）
         adjust_param = 0.023 / 0.023  # 这个用于根据采样频率调整阈值的大小 [todo] 这是个预留接口 看到那个 “0.023/0.023” 了吗？后续需要在这里将采样频率考虑进来
         index_dis_optimize_thresh = index_dis_optimize_thresh * adjust_param
         index_dis_side_thresh = index_dis_side_thresh * adjust_param
 
         # 对于端点距离 index_dis 小于阈值的缝边进行优化 ---------------------------------------------------------------------------------
-        if index_dis < index_dis_optimize_thresh:
+        # 对于中间存在空隙的相邻缝边，用单倍阈值；对于中间存在重合的相邻缝边，要更积极的处理，采样大于2倍的阈值。
+        if index_dis < index_dis_optimize_thresh * 5:
             # === 检测两个缝边离端点的距离 ===
             # 同一 edge 上的所有点
             edge_points_pre_right = all_edge_info[pre_right_point["edge_id"]]["points_info"]
@@ -236,14 +237,15 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
                             optimized = True
 
 
-            # 其它情况（到目前为止还没进行任何优化）：在这两个缝边的邻接处的两个点的中间作为目标位置
+            # 其它情况（到目前为止还没进行任何优化）：在这两个缝边的邻接处的两个点的中间作为目标位置 [todo] 这里的判断条件可能有问题
             if not optimized:
                 if min_dis_index == 1:  # 两个边中间有缝隙
-                    target_global_param = pre_right_point["global_param"] + param_dis / 2
+                    if index_dis < index_dis_optimize_thresh:
+                        target_global_param = pre_right_point["global_param"] + param_dis / 2
                 else:  # 两个边中间有重合
-                    target_global_param = cur_left_point["global_param"] + param_dis / 2
+                    if index_dis < index_dis_optimize_thresh * 5:  # 对于中间有重合的情况，我们需要更积极的处理
+                        target_global_param = cur_left_point["global_param"] + param_dis / 2
 
-            
             # === 如果越界到别的 panel 上了，则修正 ===
             if target_global_param > current_panel_info["param_end"]:
                 target_global_param = current_panel_info["param_start"] +  target_global_param - current_panel_info["param_end"]
@@ -662,7 +664,6 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
     stitch_edge_list = filtered_stitch_edge_list
 
 
-    # [todo] 有BUG
     # 将缝合两端都完全衔接的相邻的缝合进行合并 ---------------------------------------------------------------------------------
     stitch_edge_list_merged = []  # 合并后的缝边
     # 按所在板片进行排序后的 stitch_edge_list
