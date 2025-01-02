@@ -1,20 +1,22 @@
 
-MODEL_NAME: jigsaw_StyleXD
+MODEL_NAME: Stitch_Predictor
 MODULE: jigsaw_stylexd
 
 PROJECT: jigsaw
 
 DATASET: stylexd.all_piece_matching
 
-#WEIGHT_FILE: pretrained/pipline4/V6_E100.ckpt
+# WEIGHT_FILE: pretrained/pipline4/V6_E100.ckpt
+WEIGHT_FILE_POINTCLASSIFIER: pretrained/_Point_Classifier/PCglobal+PClocal+UV_tfB3_sn1/model_epoch=199.ckpt
+# WEIGHT_FILE_STITCHPREDICTOR:
 
 RESUME: false
 WANDB:
   ID: ivjf8z54
 
 GPUS: [0]
-BATCH_SIZE: 4
-NUM_WORKERS: 4
+BATCH_SIZE: 14
+NUM_WORKERS: 14
 
 TRAIN:
   NUM_EPOCHS: 100
@@ -29,13 +31,26 @@ MODEL:
   USE_POINT_FEATURE: True   # 是否提取点特征
   USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
   USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
-  USE_UV_FEATURE: True      # 是否提取UV特征
-  TF_LAYER_NUM: 5  # PT层的数量
+  USE_UV_FEATURE: True     # 是否提取UV特征
+  TF_LAYER_NUM: 3
+  USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
   IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   PC_CLS_THRESHOLD: 0.5
   LOSS:
-    w_cls_loss: 1.0
-    w_mat_loss: 0.0
+    w_cls_loss: 0.0
+    w_mat_loss: 1.0
+
+  POINTCLASSIFIER:
+    TF_LAYER_NUM: 3
+    USE_TF_BLOCK: True
+    TF_NUM_HEADS: 8
+    TF_NUM_SAMPLE: 16
+
+  STITCHPREDICTOR:
+    TF_LAYER_NUM: 3
+    USE_TF_BLOCK: True
+    TF_NUM_HEADS: 8
+    TF_NUM_SAMPLE: 16
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1
@@ -48,9 +63,10 @@ DATA:
 
   NUM_PC_POINTS: 1500
 
+  # [todo] 训练时改成True
   SHUFFLE: True  # 打乱dataset
 
-  MAX_NUM_PART: 33
+  MAX_NUM_PART: 64
   MIN_PART_POINT: 10
 
   PCS_SAMPLE_TYPE:  # 在Panel上采样的方式
@@ -60,11 +76,11 @@ DATA:
 
   SHRINK_MESH:
     TRAIN: True
-    VAL: False
+    VAL: True
     TEST: False
   SHRINK_MESH_PARAM:
-    TRAIN: 0.9
-    VAL: 1
+    TRAIN: 0.8
+    VAL: 0.8
     TEST: 1
 
   PCS_NOISE_TYPE: default  # default  normal

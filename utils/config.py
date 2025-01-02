@@ -117,8 +117,10 @@ __C.FP16 = False
 # CUDNN benchmark
 __C.CUDNN = False
 
-__C.RESUME = False  # 是否在某一checkpoint上继续训练（以及是否衔接WandB的训练曲线）
-__C.WEIGHT_FILE = ""
+__C.RESUME = False      # 是否在某一checkpoint上继续训练（以及是否衔接WandB的训练曲线）
+__C.WEIGHT_FILE = ""        # (仅供不拆分的模型使用: model/jigsaw_stylexd/joint_seg_align_model.py)
+__C.WEIGHT_FILE_POINTCLASSIFIER = ""     # (仅供拆分的模型使用) 点分类部分的模型的ckpt
+__C.WEIGHT_FILE_STITCHPREDICTOR = ""     # (仅供拆分的模型使用) 点缝合部分的模型的ckpt
 
 # Output path (for checkpoints, running logs)
 __C.OUTPUT_PATH = ""

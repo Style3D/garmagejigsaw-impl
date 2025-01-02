@@ -51,9 +51,9 @@ class PointClassifier(MatchingBaseModel):
         self.pccls_feat_dim = self.backbone_feat_dim
         self.pc_classifier_layer = self._init_pc_classifier_layer()
 
-        self.tf_layer_num = cfg.MODEL.get("TF_LAYER_NUM", 1)
+        self.tf_layer_num = cfg.MODEL.POINTCLASSIFIER.get("TF_LAYER_NUM", 1)
         assert self.tf_layer_num >= 0, "tf_layer_num too small"
-        self.use_tf_block = cfg.MODEL.get("USE_TF_BLOCK", False)
+        self.use_tf_block = cfg.MODEL.POINTCLASSIFIER.get("USE_TF_BLOCK", False)
         # === 如果不使用 PointTransformer Block === (这种方法仅能够支持 self.tf_layer_num <= 2，在层数过多的情况下会出现训练过程中的梯度骤增)
         if not self.use_tf_block:
             # [todo] 分成以下三种情况是为了兼容过去的checkpoints，将来可以考虑将这三个if整合到一起，重新训练一遍
@@ -196,7 +196,8 @@ class PointClassifier(MatchingBaseModel):
         pc_cls = torch.sigmoid(pc_cls)
         pc_cls_mask = ((pc_cls>self.pc_cls_threshold) * 1)
         out_dict.update({"pc_cls": pc_cls,
-                         "pc_cls_mask": pc_cls_mask,})
+                         "pc_cls_mask": pc_cls_mask,
+                         "features": features})
 
         return out_dict
 
