@@ -138,7 +138,6 @@ def cal_neigbor_points_index_dis(start_point, end_point, all_panel_info):
 
 
 def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_thresh, all_panel_info, all_edge_info):
-
     current_panel_info = all_panel_info[stitch_edge_list_paramOrder[0]['start_point']['panel_id']]
     for se_idx, stitch_edge in enumerate(stitch_edge_list_paramOrder):
         if se_idx == 0:
@@ -242,9 +241,13 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
                 if min_dis_index == 1:  # 两个边中间有缝隙
                     if index_dis < index_dis_optimize_thresh:
                         target_global_param = pre_right_point["global_param"] + param_dis / 2
+                    else:
+                        return
                 else:  # 两个边中间有重合
                     if index_dis < index_dis_optimize_thresh * 5:  # 对于中间有重合的情况，我们需要更积极的处理
                         target_global_param = cur_left_point["global_param"] + param_dis / 2
+                    else:
+                        return
 
             # === 如果越界到别的 panel 上了，则修正 ===
             if target_global_param > current_panel_info["param_end"]:
@@ -254,6 +257,16 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
             target_point_id, first_close_point, second_close_point = global_param2point_id(target_global_param, current_panel_info)
             target_edge_info =  all_edge_info[first_close_point["edge_id"]]         # 获取所在边的信息
             target_param = target_global_param - target_edge_info["param_start"]    # 局部param
+
+            # [todo] 可以考虑改成中间的点中不缝合点超过多少时，就不进行优化
+            # === 如果目标点位置是不缝合点，则不进行合并 ===
+            if min_dis_index == 1: check_param = pre_right_point["global_param"] + param_dis / 2
+            else: check_param = cur_left_point["global_param"] + param_dis / 2
+            if check_param > current_panel_info["param_end"]:
+                check_param = current_panel_info["param_start"] + check_param - current_panel_info["param_end"]
+            _, check_point, _ = global_param2point_id(check_param, current_panel_info)
+            if not check_point["is_stitch"]:
+                return
 
             # === 将计算出的新的目标位置赋给两个缝合边 ===
             for point in [pre_right_point, cur_left_point]:
@@ -381,7 +394,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                 elif idx==len(edge_points_idx)-1: param-=very_small_gap
 
                 point_info = {"id": point_idx, "panel_id": panel_info["id"], "edge_id": edge_info["id"],
-                              "param": param, "global_param": global_param + param}
+                              "param": param, "global_param": global_param + param, "is_stitch": False}
                 edge_info["points_info"].append(point_info)
                 pt_key = point_idx.tolist()
                 if not pt_key in all_point_info.keys():
@@ -421,6 +434,15 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
                 # 当前点 和它缝合的点
                 point_idx = point_info["id"]
                 point_idx_cor = stitch_mat[point_idx]
+
+                # 将它们标记为缝合点
+                lst = []
+                if point_idx>0: lst.append(all_point_info[point_idx.item()])
+                if point_idx_cor>0: lst.append(all_point_info[point_idx_cor.item()])
+                for p_l in lst:
+                    for p in p_l:
+                        p["is_stitch"] = True
+
 
                 # 防止不缝合的点导致的报错
                 if point_idx_cor.tolist() != -1:

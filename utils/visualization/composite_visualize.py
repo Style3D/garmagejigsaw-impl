@@ -63,7 +63,7 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
                 mode='markers',
                 name='s%02d_xyz' % part_idx,
                 marker=dict(
-                    size=1,
+                    size=2,
                     color=part_color,
                     opacity=0.8
                 )
@@ -82,7 +82,7 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
                 mode='markers',
                 name='s%02d_xyz' % part_idx,
                 marker=dict(
-                    size=1,
+                    size=2,
                     color=part_color,
                     opacity=0.8
                 )
@@ -102,7 +102,7 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
                 mode='markers',
                 name='s%02d_xyz' % part_idx,
                 marker=dict(
-                    size=1,
+                    size=2,
                     color=part_color,
                     opacity=0.8
                 )
