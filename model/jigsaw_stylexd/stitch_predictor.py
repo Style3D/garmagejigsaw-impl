@@ -24,18 +24,16 @@ class StitchPredictor(MatchingBaseModel):
 
         self.point_classifier = point_classifier
 
-        # === 计算backbone提取的特征维度 ===
         self.backbone_feat_dim = point_classifier.backbone_feat_dim
 
         self.aff_feat_dim = self.cfg.MODEL.AFF_FEAT_DIM
         assert self.aff_feat_dim % 2 == 0, "The affinity feature dimension must be even!"
         self.half_aff_feat_dim = self.aff_feat_dim // 2
 
+        self._init_pointtransformer(cfg)
         self.affinity_extractor = self._init_affinity_extractor()
         self.affinity_layer = self._init_affinity_layer()
         self.sinkhorn = self._init_sinkhorn()
-
-
 
 
     def _init_pointtransformer(self, cfg):
@@ -79,6 +77,7 @@ class StitchPredictor(MatchingBaseModel):
                 )
                 self.tf_layers_ml.append(tf_block)
                 self.tf_layers.append(("block", tf_block))
+
     def _init_affinity_extractor(self):
         affinity_extractor = nn.Sequential(
             nn.BatchNorm1d(self.backbone_feat_dim),
@@ -122,14 +121,34 @@ class StitchPredictor(MatchingBaseModel):
         out_dict.update(pc_cls_rst)
         pc_cls_mask = pc_cls_rst["pc_cls_mask"]
         features = pc_cls_rst["features"]
-
-        # === 预测点点缝合关系 ===
-        # pointcloud_visualize(pcs[0][pc_cls_mask[0]==1])
         n_stitch_pcs_sum = torch.sum(pc_cls_mask, dim=-1)
 
+        stitch_pcs = self._get_stitch_pcs(pcs, n_stitch_pcs_sum, pc_cls_mask, B_size, N_point)
         stitch_pcs_feats = self._get_stitch_pcs_feats(features, n_stitch_pcs_sum, pc_cls_mask, B_size, N_point, self.backbone_feat_dim)
         out_dict.update({"n_stitch_pcs_sum": n_stitch_pcs_sum,})
 
+        # === 提取出的特征输入到PointTransformer Layers\Blocks ===
+        pcs_flatten = torch.concat([stitch_pcs[i][:n_stitch_pcs_sum[i]] for i in range(B_size)])
+        # 顶点特征输入到PointTransformer层中，获取点与点之间的关系
+        for name, layer in self.tf_layers:
+            # 如果是自注意力层
+            if name == "self":
+                features = (
+                    layer(
+                        pcs_flatten,
+                        stitch_pcs_feats.view(-1, self.backbone_feat_dim),
+                        batch_length,
+                    ).view(B_size, N_point, -1).contiguous()
+                )
+            # 如果是交叉注意力层
+            elif name == "cross":
+                features = layer(features)
+            # 如果是被封装成块了
+            elif name == "block" and self.use_tf_block:
+                features = layer(pcs_flatten, features, n_stitch_pcs_sum, B_size, N_point, unmean=True)
+
+        # === 预测点点缝合关系 ===
+        # pointcloud_visualize(pcs[0][pc_cls_mask[0]==1])
         affinity_feat = self.affinity_extractor(stitch_pcs_feats.permute(0, 2, 1))
         affinity_feat = affinity_feat.permute(0, 2, 1)
         affinity_feat = torch.cat(
@@ -215,6 +234,12 @@ class StitchPredictor(MatchingBaseModel):
         loss = mat_loss * self.w_mat_loss
         loss_dict.update({"loss": loss,})
         return loss_dict
+
+    def _get_stitch_pcs(self, pcs, n_stitch_pcs_sum, pc_cls_mask, B_size, N_point):
+        critical_pcs = torch.zeros(B_size, N_point, 3, device=self.device, dtype=pcs.dtype)
+        for b in range(B_size):
+            critical_pcs[b, : n_stitch_pcs_sum[b]] = pcs[b, pc_cls_mask[b] == 1]
+        return critical_pcs
 
     def _get_stitch_pcs_feats(self, feat, n_stitch_pcs_sum, pc_cls_mask, B_size, N_point, F_dim):
         critical_feats = torch.zeros(B_size, N_point, F_dim, device=self.device, dtype=feat.dtype)

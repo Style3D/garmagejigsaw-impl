@@ -65,6 +65,7 @@ def train_model(cfg):
         })
 
     model = build_model(cfg)
+
     trainer = pl.Trainer(**trainer_dict)
     train_loader, val_loader = build_stylexd_dataloader_train_val(cfg)
 

@@ -48,7 +48,9 @@ def get_pointstitch(batch, inf_rst,
     # 禁止相邻点相交 ------------------------------------------------------------------------------------------------------
     # 禁止点自交
     stitch_mat_pred_[0][torch.eye(stitch_mat_pred_.shape[-1], stitch_mat_pred_.shape[-1]) == 1] = 0
-    # 禁止相邻点相交 [todo] 收束类型的相邻点相交不应该被筛除，这个可以通过缝合距离来判断
+    # 禁止相邻点相交
+    # [todo] 收束类型的相邻点相交不应该被筛除，这个可以通过缝合距离来判断
+    #  [todo] 这一步放到结尾比较合理
     if filter_neighbor_stitch:
         i_indices = torch.arange(stitch_mat_pred_.shape[-1]).view(-1, 1).repeat(1, stitch_mat_pred_.shape[-1])
         j_indices = torch.arange(stitch_mat_pred_.shape[-1]).view(1, -1).repeat(stitch_mat_pred_.shape[-1], 1)

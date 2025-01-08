@@ -232,7 +232,15 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                 features = layer(features)
             # 如果是被封装成块了
             elif name == "block" and self.use_tf_block:
-                features = layer(pcs_flatten, features, batch_length, B_size, N_point)
+                features = (
+                    layer(
+                        pcs_flatten,
+                        features,
+                        batch_length,
+                        B_size,
+                        N_point
+                    )
+                )
 
         # 预测点分类
         pc_cls = self.pc_classifier_layer(features.transpose(1, 2)).transpose(1, 2).squeeze(-1)
@@ -383,7 +391,7 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                 }
             )
 
-        if self.is_train_in_stages:
+        if self.is_train_in_stages and self.training:
             with torch.no_grad():
                 self.cls_loss_list.append(float(cls_loss))
                 self.mat_loss_list.append(float(mat_loss))
@@ -418,15 +426,12 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
 
         with torch.no_grad():
             cls_loss_mean = torch.mean(torch.tensor(self.cls_loss_list))
-            if cls_loss_mean < 0.08:
+            if cls_loss_mean < self.cfg.MODEL.TRAIN_IN_STAGE.W_CLS:
                 new_pc_cls_threshold = self.cfg.MODEL.PC_CLS_THRESHOLD * 1.0
                 new_w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss * 1.0
-            elif cls_loss_mean < 0.12:
-                new_pc_cls_threshold = self.cfg.MODEL.PC_CLS_THRESHOLD * 1.0
-                new_w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss * 0.4
-            elif cls_loss_mean < 0.16:
-                new_pc_cls_threshold = self.cfg.MODEL.PC_CLS_THRESHOLD * 1.0
-                new_w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss * 0.2
+                # 将之冻结
+                for param in self.pc_classifier_layer.parameters():
+                    param.requires_grad = False
             else:
                 new_pc_cls_threshold = 0.5
                 new_w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss * 0.0
@@ -445,4 +450,5 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                 # "Charts/training_stage": self.training_stage,
                 "Charts/w_cls_loss": torch.tensor(self.w_cls_loss, dtype=torch.float32),
                 "Charts/w_mat_loss": torch.tensor(self.w_mat_loss, dtype=torch.float32),
+                "train/cls_loss_mean": cls_loss_mean,
             },logger=True, sync_dist=False, rank_zero_only=True)

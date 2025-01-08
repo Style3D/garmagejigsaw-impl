@@ -71,7 +71,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         self.data_types = data_types
 
         self.data_list = self._read_data()
-        # self.data_list = self.data_list[::100]
+        # self.data_list = self.data_list[::200]
 
         try:
             with open(os.path.join(data_dir,self.mode,"data_info.json"), "r", encoding="utf-8") as f:
@@ -248,77 +248,6 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         boundary_points_idx = np.concatenate(boundary_point_list, axis=0)
         adjacency_list = np.concatenate(adjacency_list, axis=-2)
         # pointcloud_visualize(vertices[boundary_points_idx])
-
-        # # PART 2 -------------------------------------------------------------------------------------------------------
-        # # 过滤掉毛刺
-        #
-        # # e_len_list = []
-        # # pt_l = adjacency_list[:, 1]
-        # # pt_r = adjacency_list[:, 2]
-        # # e_len_l = np.sum(np.sqrt((vertices[pt_l] - vertices[boundary_points_idx]) ** 2), axis=-1)
-        # # e_len_r = np.sum(np.sqrt((vertices[boundary_points_idx] - vertices[pt_r]) ** 2), axis=-1)
-        # # threshold = 0.04
-        # # e_len_l = e_len_l < threshold
-        # # e_len_r = e_len_r < threshold
-        #
-        # # loop_end_idxs = np.cumsum(n_loop_pts)
-        # # filtered_loop_list = []
-        # # adjacency_list = []
-        # # for idx, loop_len in enumerate(n_loop_pts):
-        # #     if idx == 0:
-        # #         loop_start_idx = 0
-        # #     else:
-        # #         loop_start_idx = loop_end_idxs[idx - 1]
-        # #     loop_end_idx = loop_end_idxs[idx]
-        # #     loop = boundary_points_idx[loop_start_idx:loop_end_idx][e_len_l[loop_start_idx:loop_end_idx]]
-        # #     filtered_loop_list.append(loop)
-        # #
-        # #     boundary_adjacency = np.zeros((len(loop), 4), dtype=np.int32)
-        # #     if len(loop) > 4:
-        # #         boundary_adjacency[:, 0] = np.concatenate([loop[2:], loop[:2]], axis=-1)
-        # #         boundary_adjacency[:, 1] = np.concatenate([loop[1:], loop[:1]], axis=-1)
-        # #         boundary_adjacency[:, 2] = np.concatenate([loop[-1:], loop[:-1]], axis=-1)
-        # #         boundary_adjacency[:, 3] = np.concatenate([loop[-2:], loop[:-2]], axis=-1)
-        # #     else:
-        # #         boundary_adjacency[:, :] = loop
-        # #     adjacency_list.append(boundary_adjacency)
-        # # boundary_points_idx = np.concatenate(filtered_loop_list,axis=-1)
-        # # adjacency_list = np.concatenate(adjacency_list,axis=-2)
-        # # # pointcloud_visualize(vertices[boundary_points_idx])
-        #
-        # # PART 3 -------------------------------------------------------------------------------------------------------
-        # # 随机采样边界点
-        #
-        # sample_idx = LatinHypercubeSample(len(boundary_points_idx), num_points)
-        # sample_idx = sorted(sample_idx)
-        # boundary_points_sample_idx = boundary_points_idx[sample_idx]
-        # boundary_points_sample = vertices[boundary_points_sample_idx]
-        # adjacent_sample = adjacency_list[sample_idx]
-        # adjacent_sample_point = vertices[adjacent_sample]
-        # piece_id = np.concatenate([np.array([idx] * n) for idx, n in enumerate(nps)], axis=0)[boundary_points_sample_idx]
-        #
-        # # PART 4 -------------------------------------------------------------------------------------------------------
-        # # 对采样的边界点进行平滑化
-        #
-        # # # 平滑参数
-        # # weight_flat = 0
-        # # sample_points = (
-        # #     weight_flat *
-        # #         (np.mean(adjacent_sample_point[:, 1:3, :], axis=1) * 0.2 +
-        # #          np.mean(adjacent_sample_point[:, 0::3, :], axis=1) * 0.8 ) +
-        # #     boundary_points_sample *
-        # #         (1-weight_flat)
-        # #     )
-        # # # pointcloud_visualize(sample_points)
-        # # points_normalized, normalize_range = min_max_normalize(sample_points)
-        #
-        #
-        # points_normalized, normalize_range = min_max_normalize(boundary_points_sample)
-        # mean_edge_len = cal_mean_edge_len(meshes) / normalize_range
-        # # pointcloud_visualize(points_normalized)
-        #
-        # points_normalized += get_sphere_noise(self.num_points,radius=self.pcs_noise_strength * mean_edge_len)
-        # points_normalized, normalize_range = min_max_normalize(boundary_points_sample)
 
         boundary_points = vertices[boundary_points_idx]
         piece_id = np.concatenate([np.array([idx] * n) for idx, n in enumerate(nps)], axis=0)[boundary_points_idx]

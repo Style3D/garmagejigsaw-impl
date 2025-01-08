@@ -1,3 +1,4 @@
+# 用于测试分阶段训练的冻结cls版本
 
 MODEL_NAME: jigsaw_StyleXD
 MODULE: jigsaw_stylexd
@@ -17,7 +18,7 @@ BATCH_SIZE: 5
 NUM_WORKERS: 5
 
 TRAIN:
-  NUM_EPOCHS: 100
+  NUM_EPOCHS: 300
   LR: 0.001
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
@@ -34,7 +35,7 @@ MODEL:
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
   IS_TRAIN_IN_STAGE: True  # 是否分阶段训练
   TRAIN_IN_STAGE:
-    W_CLS: 0.25
+    W_CLS: 0.04
   PC_CLS_THRESHOLD: 0.5
   LOSS:
     w_cls_loss: 1.0

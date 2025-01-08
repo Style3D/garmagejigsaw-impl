@@ -133,8 +133,8 @@ def composite_visualize(batch, inf_rst, stitch_indices_full=None, logits=None, c
             geo = pickle.load(geo_f).transpose(0,3,1,2)
             mask = pickle.load(mask_f).transpose(0,3,1,2)
 
-        grid_imgs = make_grid(torch.cat([torch.FloatTensor((geo + 1.0) * 0.5), torch.FloatTensor(mask)], dim=1),
-                              nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5, pad_value=1.)
+        grid_imgs = make_grid(torch.cat([torch.FloatTensor(geo), torch.FloatTensor(mask)], dim=1),
+                              nrow=math.ceil(math.sqrt(num_parts)), ncol=math.ceil(math.sqrt(num_parts)), padding=5, pad_value=1.,normalize=True, value_range=(-1,1))
         grid_imgs = grid_imgs.permute(1, 2, 0).cpu().numpy()
         grid_imgs = np.concatenate([grid_imgs[:, :, :3], np.repeat(grid_imgs[:, :, -1:], 3, axis=-1)], axis=0)
         fig.add_trace(px.imshow(grid_imgs).data[0], row=2, col=1)

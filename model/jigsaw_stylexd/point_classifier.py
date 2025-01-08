@@ -50,7 +50,6 @@ class PointClassifier(MatchingBaseModel):
         # self.encoder = self._init_encoder()
         self.pccls_feat_dim = self.backbone_feat_dim
         self.pc_classifier_layer = self._init_pc_classifier_layer()
-
         self.tf_layer_num = cfg.MODEL.POINTCLASSIFIER.get("TF_LAYER_NUM", 1)
         assert self.tf_layer_num >= 0, "tf_layer_num too small"
         self.use_tf_block = cfg.MODEL.POINTCLASSIFIER.get("USE_TF_BLOCK", False)

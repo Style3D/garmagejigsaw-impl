@@ -253,15 +253,30 @@ class PointTransformerBlock(nn.Module):
         self.bn3 = nn.BatchNorm1d(self.feat_dim)
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, pcs_flatten, features, batch_length, B_size, N_point):
+    def forward(self, pcs_flatten, features, batch_length, B_size, N_point, unmean=False):
         identity_1 = features
         features = self.relu(self.bn1(self.linear1(features).transpose(1, 2)).transpose(1, 2))
 
         if self.name=="self":
-            features = self.tf_layer( pcs_flatten, features.reshape(-1, self.feat_dim ),  batch_length,).view(B_size, N_point, -1).contiguous()
+            if not unmean:  # 如果每个garment的点数量相同
+                features = self.tf_layer(pcs_flatten, features.reshape(-1, self.feat_dim ),  batch_length,).view(B_size, N_point, -1).contiguous()
+            else:
+                features_flattern = torch.concat([features[i][:batch_length[i]] for i in range(B_size)])
+                features_flattern = self.tf_layer(pcs_flatten, features_flattern, batch_length, )
+                new_features = torch.zeros_like(features)
+                batch_length_cunsum = torch.cumsum(batch_length,-1)
+                for i in range(B_size):
+                    if i==0: st = 0
+                    else: st = batch_length_cunsum[i-1]
+                    ed = batch_length_cunsum[i]
+                    new_features[i, :batch_length[i]] = features_flattern[st:ed]
+                features=new_features
         elif self.name=="cross":
-            features = self.tf_layer(features)
-
+            if not unmean:
+                #[todoZ]
+                features = self.tf_layer(features)
+            else:
+                a=1
         features = self.relu(self.bn2(features.transpose(1, 2)).transpose(1, 2))
         features = self.bn3(self.linear3(features).transpose(1, 2)).transpose(1, 2)
 

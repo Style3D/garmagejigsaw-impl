@@ -6,23 +6,23 @@ PROJECT: jigsaw
 DATASET: stylexd.all_piece_matching
 
 
-# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last-v1.ckpt
+# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
 
 RESUME: false
 WANDB:
-  ID: 0v9nor32
+  ID: 2cjo24yz
 
-GPUS: [0, 1]
-BATCH_SIZE: 15
-NUM_WORKERS: 15
+GPUS: [1]
+BATCH_SIZE: 12
+NUM_WORKERS: 12
 
 TRAIN:
-  NUM_EPOCHS: 120
+  NUM_EPOCHS: 300
   LR: 0.001
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
   LR_SCHEDULER: 'cosine' # [notice] 恢复训练时不开这个
-  LR_DECAY: 10.
+  LR_DECAY: 50.
   VAL_EVERY: 1
 
 MODEL:
@@ -30,9 +30,12 @@ MODEL:
   USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
   USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
   USE_UV_FEATURE: True      # 是否提取UV特征
-  TF_LAYER_NUM: 2  # PT层的数量
+  TF_LAYER_NUM: 3  # PT层的数量
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
-  IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
+  IS_TRAIN_IN_STAGE: True  # 是否分阶段训练
+  TRAIN_IN_STAGE:
+    W_CLS: 0.08
+
   PC_CLS_THRESHOLD: 0.5
   LOSS:
     w_cls_loss: 1.0
