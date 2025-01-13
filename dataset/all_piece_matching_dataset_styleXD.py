@@ -71,7 +71,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         self.data_types = data_types
 
         self.data_list = self._read_data()
-        # self.data_list = self.data_list[::200]
+        self.data_list = self.data_list[::200]
 
         try:
             with open(os.path.join(data_dir,self.mode,"data_info.json"), "r", encoding="utf-8") as f:

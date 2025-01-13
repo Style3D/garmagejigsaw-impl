@@ -35,8 +35,15 @@ __C.STYLEXD.TF_NUM_SAMPLE = 16
 __C.STYLEXD.USE_TF_BLOCK = False  # 是否使用 PointTransformer Block 来将每个 PointTransformer 进行分别封装
 
 __C.STYLEXD.LOSS = edict()
+"""
+value of MAT_LOSS_TYPE should be selected in ["local", "global"]
+local : only calculate mat loss in stitch loss, witch may cause cls loss raise
+global : calculate mat loss in all points
+"""
+__C.STYLEXD.LOSS.MAT_LOSS_TYPE = "local"
 __C.STYLEXD.LOSS.w_cls_loss = 0.5
 __C.STYLEXD.LOSS.w_mat_loss = 0.0
+
 
 # === 如果时分别训练的版本，则有些东西分开 ===
 __C.STYLEXD.POINTCLASSIFIER = edict()

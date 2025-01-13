@@ -6,7 +6,7 @@ PROJECT: jigsaw
 
 DATASET: stylexd.all_piece_matching
 
-#WEIGHT_FILE: pretrained/pipline4/V6_E100.ckpt
+#WEIGHT_FILE: pretrained/Classpred+stitchpred/PCglobal+PClocal+UV_tfB3_sn1/model_epoch=099.ckpt
 
 RESUME: false
 WANDB:
@@ -32,13 +32,14 @@ MODEL:
   USE_UV_FEATURE: True     # 是否提取UV特征
   TF_LAYER_NUM: 3
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
-  IS_TRAIN_IN_STAGE: True  # 是否分阶段训练
+  IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   TRAIN_IN_STAGE:
-    W_CLS: 0.25
+    W_CLS: 0.12
   PC_CLS_THRESHOLD: 0.5
   LOSS:
-    w_cls_loss: 1.0
-    w_mat_loss: 0.08
+    MAT_LOSS_TYPE: "local"
+    w_cls_loss: 1.
+    w_mat_loss: 0.008
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1

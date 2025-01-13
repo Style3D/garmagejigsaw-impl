@@ -19,6 +19,10 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
     def __init__(self, cfg):
         super().__init__(cfg)
         self.N_point = cfg.DATA.NUM_PC_POINTS               # 点数量
+
+        self.mat_loss_type = cfg.MODEL.LOSS.get("MAT_LOSS_TYPE", "local")
+        if self.mat_loss_type not in ["local", "global"]:
+            raise ValueError(f"self.mat_loss_type = {self.mat_loss_type} is wrong")
         self.w_cls_loss = self.cfg.MODEL.LOSS.w_cls_loss    # 点分类损失
         self.w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss    # 缝合损失
         self.pc_cls_threshold = self.cfg.MODEL.PC_CLS_THRESHOLD  # 二分类结果的阈值
@@ -186,6 +190,9 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
             stitch_pcs_gt_mat[B][:n_stitch_pcs_sum[B], :n_stitch_pcs_sum[B]] = mat_gt[B][pc_cls_mask[B] == 1][:,pc_cls_mask[B] == 1]
         return stitch_pcs_gt_mat
 
+    def _get_global_ds_mat(self):
+        pass
+
     def forward(self, data_dict):
         out_dict = dict()
 
@@ -307,22 +314,47 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
 
         # calculate matching loss ----------------------------------------------------------------------------------
         """
-           之所以让模型与预测一个尽量对称的ds_mat，而不是仅取ds_mat的上半部分与gt_mat计算损失，是因为我希望模型能真正学到通过几何关系来计算
+        【gt_mat是单向的】
+        
+        之所以让模型与预测一个尽量对称的ds_mat，而不是仅取ds_mat的上半部分与gt_mat计算损失，是因为我希望模型能真正学到通过几何关系来计算
         缝合关系，即：如果点A被预测和点B缝合，那么对B进行预测的结果也应当是A
-            因此，我选择让模型去和双向的gt_mat（上三角被复制到下三角）来计算损失，从而让affinity layer学到从几何角度推出缝合关系，从而
+        
+        因此，我选择让模型去和双向的gt_mat（上三角被复制到下三角）来计算损失，从而让affinity layer学到从几何角度推出缝合关系，从而
         解决那些错误缝合。在使用模型的inference结果时，可以先将行中最大值小于阈值的行（以及对应的列）全部剔除，然后进行匈牙利算法
         """
-        n_stitch_pcs_sum = n_stitch_pcs_sum.reshape(-1)
-        # 【下三角为0】具有缝合关系的点，它们之间的gt缝合关系（单向缝合）
-        stitch_pcs_gt_mat_half = self._get_stitch_pcs_gt_mat(gt_mat,pc_cls_mask,B_size,N_point,n_stitch_pcs_sum)
+
+        if self.mat_loss_type=="local":
+            n_stitch_pcs_sum = n_stitch_pcs_sum.reshape(-1)
+
+            # 获取 对称的 gt_mat
+            stitch_pcs_gt_mat_half = self._get_stitch_pcs_gt_mat(gt_mat, pc_cls_mask, B_size, N_point, n_stitch_pcs_sum)
+            stitch_pcs_gt_mat = stitch_pcs_gt_mat_half + stitch_pcs_gt_mat_half.transpose(-1, -2)
+            mat_loss = permutation_loss(
+                ds_mat, stitch_pcs_gt_mat.float(), n_stitch_pcs_sum, n_stitch_pcs_sum
+            )
+        elif self.mat_loss_type=="global":
+            n_stitch_pcs_sum = n_stitch_pcs_sum.reshape(-1)
+
+            # 获取 global的 ds_mat
+            ds_mat_global = torch.zeros((B_size,N_point,N_point), device=ds_mat.device)
+            for B in range(B_size):
+                ds_mat_global[B][pc_cls_mask[B] == 1][:, pc_cls_mask[B] == 1] = ds_mat[B][:n_stitch_pcs_sum[B], :n_stitch_pcs_sum[B]]
+
+            # 获取 对称的 gt_mat
+            stitch_pcs_gt_mat_half = gt_mat
+            stitch_pcs_gt_mat = stitch_pcs_gt_mat_half + stitch_pcs_gt_mat_half.transpose(-1, -2)
+
+            n_pcs_sum = torch.ones((B_size), device=pcs.device, dtype=torch.int64) * N_point
+            mat_loss = permutation_loss(
+                ds_mat_global, stitch_pcs_gt_mat.float(), n_pcs_sum, n_pcs_sum
+            )
+        else:
+            raise  NotImplementedError(f"self.mat_loss_type={self.mat_loss_type}")
         # stitch_pcs=pcs[0][pc_cls_mask[0] == 1]
         # pointcloud_visualize(stitch_pcs)
         # pointcloud_and_stitch_visualize(stitch_pcs, stitch_mat2indices(stitch_pcs_gt_mat[0].cpu().detach().numpy()))
         # 【上下三角sum相等】双向的的缝合关系
-        stitch_pcs_gt_mat = stitch_pcs_gt_mat_half + stitch_pcs_gt_mat_half.transpose(-1, -2)
-        mat_loss = permutation_loss(
-            ds_mat, stitch_pcs_gt_mat.float(), n_stitch_pcs_sum, n_stitch_pcs_sum
-        )
+
         loss_dict.update(
             {
                 "mat_loss": mat_loss,

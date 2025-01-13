@@ -6,13 +6,13 @@ PROJECT: jigsaw
 DATASET: stylexd.all_piece_matching
 
 
-# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
+WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
 
-RESUME: false
+RESUME: true
 WANDB:
-  ID: 2cjo24yz
+  ID: gammtewg
 
-GPUS: [1]
+GPUS: [0, 1]
 BATCH_SIZE: 12
 NUM_WORKERS: 12
 
@@ -38,8 +38,9 @@ MODEL:
 
   PC_CLS_THRESHOLD: 0.5
   LOSS:
+    MAT_LOSS_TYPE: "local"
     w_cls_loss: 1.0
-    w_mat_loss: 0.0
+    w_mat_loss: 0.08
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1
