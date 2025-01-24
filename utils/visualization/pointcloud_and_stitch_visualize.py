@@ -137,7 +137,7 @@ def pointcloud_and_stitch_visualize(vertices:np.array, stitches:np.array, title=
     )
 
     # 显示图形
-    fig.show()
+    fig.show("browser")
 
 
 

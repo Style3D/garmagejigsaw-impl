@@ -32,7 +32,7 @@ def train_model(cfg):
         dirpath=cfg.MODEL_SAVE_PATH,
         filename="model_{epoch:03d}",
         monitor="epoch",
-        every_n_epochs=10,  # 每间隔 n epoch保存一次
+        every_n_epochs=4,  # 每间隔 n epoch保存一次
         save_top_k=-1,  # 保存所有
         mode=cfg.CALLBACK.CHECKPOINT_MODE,
         save_last=True,

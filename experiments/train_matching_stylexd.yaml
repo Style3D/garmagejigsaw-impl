@@ -13,8 +13,8 @@ WANDB:
   ID: ivjf8z54
 
 GPUS: [0]
-BATCH_SIZE: 5
-NUM_WORKERS: 5
+BATCH_SIZE: 1
+NUM_WORKERS: 1
 
 TRAIN:
   NUM_EPOCHS: 100
@@ -35,11 +35,12 @@ MODEL:
   IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   TRAIN_IN_STAGE:
     W_CLS: 0.12
+    VAL_ACC: 0.8
   PC_CLS_THRESHOLD: 0.5
   LOSS:
     MAT_LOSS_TYPE: "local"
     w_cls_loss: 1.
-    w_mat_loss: 0.008
+    w_mat_loss: 0.0
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1
@@ -50,7 +51,7 @@ DATA:
   DATA_TYPES:
     TEST: ["StyleGen"]  # mul-selections:["StyleGen", "StyleGenML", "Brep128", "Brep256", "Brep512", "Brep1024"]
 
-  NUM_PC_POINTS: 1500
+  NUM_PC_POINTS: 2500
 
   # [todo] 训练时改成True
   SHUFFLE: True  # 打乱dataset
@@ -68,14 +69,14 @@ DATA:
     VAL: True
     TEST: False
   SHRINK_MESH_PARAM:
-    TRAIN: 0.8
-    VAL: 0.8
+    TRAIN: 0.2
+    VAL: 0.2
     TEST: 1
 
   PCS_NOISE_TYPE: default  # default  normal
   PCS_NOISE_STRENGTH: 0.0
   USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
-  STITCH_NOISE_STRENGTH: 1
+  STITCH_NOISE_STRENGTH: 1.5
   STITCH_NOISE_RANDOM_RANGE: [0.8, 2.2]
 
   PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
@@ -83,8 +84,8 @@ DATA:
     VAL: default
     TEST: default
   SCALE_RANGE: 0.07
-  ROT_RANGE: 0.2
-  TRANS_RANGE: 3
+  ROT_RANGE: 3
+  TRANS_RANGE: 15
 
 # STATS is for eval
 STATS: "./results/jigsaw_4x4_128_512_250e_cosine_everyday/stats/eval"

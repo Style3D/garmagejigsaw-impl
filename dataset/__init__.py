@@ -1,4 +1,5 @@
 from .all_piece_matching_dataset_styleXD import build_stylexd_dataloader_train_val
+from .all_piece_matching_dataset_styleXD import build_stylexd_dataloader_test
 from .all_piece_matching_dataset_styleXD import build_stylexd_dataloader_inference
 from .dataset_config_styleXD import dataset_cfg
 

@@ -141,6 +141,18 @@ def min_max_normalize(points):
     return normalized_points, ranges[0]
 
 
+# 对整个数据集进行的相同的 normalize
+def styleXD_normalize(point):
+    global_scale = 2000.0
+    if point.shape[-1]==3:
+        global_offset = (0., 1000., 0.)
+    elif point.shape[-1]==2:
+        global_offset = (0., 1000.)
+
+    point_rtn = (point - global_offset) / (global_scale * 0.5)
+    return point_rtn, 1000
+
+
 def get_pc_bbox(pc: np.array, type: object = "ccwh") -> object:
     if type not in ["xyxy", "ccwh", "xywh"]:
         raise ValueError()
@@ -152,6 +164,10 @@ def get_pc_bbox(pc: np.array, type: object = "ccwh") -> object:
             center = (max_+min_)/2
             scale = max_-min_
             result = [center, scale]
+        elif type == "xyxy":
+            max_ = np.array([np.max(pc[:,ax]) for ax in range(3)])
+            min_ = np.array([np.min(pc[:,ax]) for ax in range(3)])
+            result = [min_, max_]
         else:
             raise NotImplementedError
         return result
@@ -162,6 +178,10 @@ def get_pc_bbox(pc: np.array, type: object = "ccwh") -> object:
             center = (max_+min_)/2
             scale = max_-min_
             result = [center, scale]
+        elif type == "xyxy":
+            max_ = torch.tensor([torch.max(pc[:,ax]) for ax in range(3)], device=pc.device)
+            min_ = torch.tensor([torch.min(pc[:,ax]) for ax in range(3)], device=pc.device)
+            result = [min_, max_]
         else:
             raise NotImplementedError
         return result

@@ -423,10 +423,14 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                 }
             )
 
-        if self.is_train_in_stages and self.training:
+        # if self.is_train_in_stages and self.training:
+        #     with torch.no_grad():
+        #         self.cls_loss_list.append(float(cls_loss))
+        #         self.mat_loss_list.append(float(mat_loss))
+        if self.is_train_in_stages and self.trainer.validating:
             with torch.no_grad():
-                self.cls_loss_list.append(float(cls_loss))
-                self.mat_loss_list.append(float(mat_loss))
+                self.val_ACC_list.append(float(ACC))
+
 
         loss = (cls_loss * self.w_cls_loss+
                 mat_loss * self.w_mat_loss)
@@ -441,14 +445,19 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
         # self.training_stage = 0
         self.cls_loss_list = []
         self.mat_loss_list = []
+        self.val_ACC_list = []
         self.w_mat_loss = 0
         self.pc_cls_threshold = 0.5
 
-    # 在一个epoce结束时动态调整超参数，来实现分阶段学习
-    def training_epoch_end(self, outputs):
+    # # 在一个epoce结束时动态调整超参数，来实现分阶段学习
+    # def training_epoch_end(self, outputs):
+    #     super().training_epoch_end(outputs)
+    #     self.dynamic_adjustment_epoch_end()
+
+    def validation_epoch_end(self, outputs):
         super().training_epoch_end(outputs)
         self.dynamic_adjustment_epoch_end()
-        
+
     def dynamic_adjustment_epoch_end(self):
         if not self.is_train_in_stages:
             return
@@ -457,8 +466,12 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
         is_unrecoverable = True
 
         with torch.no_grad():
-            cls_loss_mean = torch.mean(torch.tensor(self.cls_loss_list))
-            if cls_loss_mean < self.cfg.MODEL.TRAIN_IN_STAGE.W_CLS:
+            # cls_loss_mean = torch.mean(torch.tensor(self.cls_loss_list))
+            ACC_mean = torch.mean(torch.tensor(self.val_ACC_list))
+            print(ACC_mean)
+            print(self.cfg.MODEL.TRAIN_IN_STAGE.VAL_ACC)
+            # if cls_loss_mean < self.cfg.MODEL.TRAIN_IN_STAGE.W_CLS:
+            if ACC_mean > self.cfg.MODEL.TRAIN_IN_STAGE.VAL_ACC:
                 new_pc_cls_threshold = self.cfg.MODEL.PC_CLS_THRESHOLD * 1.0
                 new_w_mat_loss = self.cfg.MODEL.LOSS.w_mat_loss * 1.0
                 # 将之冻结
@@ -477,10 +490,12 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
 
             self.cls_loss_list = []
             self.mat_loss_list = []
+            self.val_ACC_list = []
 
             self.log_dict({
                 # "Charts/training_stage": self.training_stage,
                 "Charts/w_cls_loss": torch.tensor(self.w_cls_loss, dtype=torch.float32),
                 "Charts/w_mat_loss": torch.tensor(self.w_mat_loss, dtype=torch.float32),
-                "train/cls_loss_mean": cls_loss_mean,
+                # "train/cls_loss_mean": cls_loss_mean,
+                "VAL/ACC_mean": ACC_mean,
             },logger=True, sync_dist=False, rank_zero_only=True)

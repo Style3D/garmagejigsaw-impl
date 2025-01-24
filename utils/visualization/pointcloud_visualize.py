@@ -9,8 +9,11 @@ import numpy as np
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+from matplotlib import pyplot as plt
+
 
 def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornum=32, color_norm = [-10,10], export_data_config=None):
+    # num_parts = 11
     # 拷贝
     if  isinstance(vertices_, torch.Tensor):
         vertices = deepcopy(vertices_.detach())
@@ -36,7 +39,7 @@ def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornu
     if not export_data_config:
         point_size = 4
     else:
-        point_size = 5
+        point_size = 7
 
     # 场景
     fig = go.Figure()
@@ -48,11 +51,11 @@ def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornu
     # 定义颜色映射
     colors = cm.get_cmap(colormap, colornum)
     color_norm = mcolors.Normalize(vmin=color_norm[0], vmax=color_norm[1])
-
+    # part_colors = plt.get_cmap('coolwarm', num_parts)
     for i, vertex in enumerate(vertices):
         # 获取颜色
         color = mcolors.to_hex(colors(color_norm(i)))
-
+        # part_color = mcolors.to_hex(part_colors(i))
         # 一个piece上的点
         surf_pnts = vertex
 
@@ -69,6 +72,7 @@ def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornu
             mode='markers',
             marker=dict(
                 size=point_size,
+                # color=part_color,
                 color=color,
                 opacity=0.8
             )
@@ -127,32 +131,69 @@ def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornu
         camera = dict(
             up=dict(x=0, y=1, z=0),
             center=dict(
-                x=(np.max(all_coords[:,0])+np.min(all_coords[:,0]))/2,
+                x=0,
                 y=0,
-                z=(np.max(all_coords[:,2])+np.min(all_coords[:,2]))/2),
+                z=0),
             eye=dict(x=0, y=0, z=1.5)
         )
         fig.update_layout(scene_camera=camera)
 
         pic_num = export_data_config["pic_num"]
         os.makedirs(export_data_config["export_path"], exist_ok=True)
-        for i in range(export_data_config["pic_num"]):
-            img_path = os.path.join(export_data_config["export_path"],f"{i}".zfill(3)+".jpg")
+        for i in range(export_data_config["pic_num"]+1):
+            img_path = os.path.join("/home/Ex1/ProjectFiles/Pycharm_MyPaperWork/Jigsaw_matching/_tmp/point_cloud_vls", f"{i}".zfill(3)+".png")
 
             math.sin(pic_num)
-            eye_z = math.cos(2 * math.pi * i / pic_num) * export_data_config["cam_dis"]
-            eye_x = math.sin(2 * math.pi * i / pic_num) * export_data_config["cam_dis"]
+            eye_z = math.cos(2 * math.pi * i / pic_num) * 1.5
+            eye_x = math.sin(2 * math.pi * i / pic_num) * 1.5
             camera = dict(
                 up=dict(x=0, y=1, z=0),
                 center=dict(
-                    x=np.mean(all_coords[:, 0]),
+                    x=0,
                     y=0,
-                    z=np.mean(all_coords[:, 2])),
+                    z=0),
                 eye=dict(x=eye_x, y=0, z=eye_z)
             )
-            fig.update_layout(scene_camera=camera)
+            # Update layout
+            fig.update_layout(
+                scene=dict(
+                    xaxis=dict(
+                        visible=False,
+                        showbackground=False,
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        title=''
+                    ),
+                    yaxis=dict(
+                        visible=False,
+                        showbackground=False,
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        title=''
+                    ),
+                    zaxis=dict(
+                        visible=False,
+                        showbackground=False,
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        title=''
+                    ),
+                    aspectmode='cube'  # Keep the aspect ratio of data
+                ),
+                width=800,
+                height=800,
+                margin=dict(r=0, l=0, b=0, t=0),
+                showlegend=False,
+                title=dict(text=title, automargin=True),
+                scene_camera=camera,
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot background
+                paper_bgcolor='rgba(0,0,0,0)'  # Transparent paper background
+            )
             fig.write_image(img_path, width=1920, height=1920, scale=2)
             # fig.show()
 
     # 显示图形
-    fig.show()
+    fig.show("browser")

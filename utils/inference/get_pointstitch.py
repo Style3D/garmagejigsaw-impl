@@ -72,7 +72,14 @@ def get_pointstitch(batch, inf_rst,
     else:
         stitch_mat_pred[:] = stitch_mat_pred_[:]
 
+    if only_triu:
+        stitch_mat_pred = torch.triu(stitch_mat_pred)
 
+    # 去除明显太长的错误结果 ====================================
+    if filter_too_long:
+        pass
+        # [todo] 这里可以直接将这些缝合的概率降低
+        # [降低一个缝合的置信度时可以同时参考缝合长度和置信度]
 
     # 两种办法：1，简单取行最大值；2，匈牙利 =======================
     if mat_choice == "col_max":  # 简单取行最大值
@@ -89,7 +96,6 @@ def get_pointstitch(batch, inf_rst,
         stitch_mat = torch.zeros_like(stitch_mat_pred)
         # 对于每行，将最大两个值的位置设置为1
         stitch_mat.scatter_(dim=-1, index=topk_indices, value=1)
-        a=1
     elif mat_choice == "hun":  # 匈牙利
         stitch_mat = hungarian(stitch_mat_pred)
     else:
@@ -162,8 +168,7 @@ def get_pointstitch(batch, inf_rst,
         mask = torch.logical_or(mask_r, mask_l)
         stitch_indices_full = stitch_indices_full[mask]
         stitch_mat_full = stitch_indices2mat(pcs.shape[0], stitch_indices_full)
-        # pointcloud_and_stitch_visualize(pcs, stitch_indices_full.detach().cpu().numpy(),
-        #           title=f"predict stitch(threshold={pc_stitch_threshold}) in all points")
+        # pointcloud_and_stitch_visualize(pcs, stitch_indices_full.detach().cpu().numpy(), title=f"predict stitch(threshold={pc_stitch_threshold}) in all points")
 
     # 如果缝合关系可传递，则
 
@@ -173,10 +178,22 @@ def get_pointstitch(batch, inf_rst,
 
     # export data
     if export_vis_result:
-        pointcloud_and_stitch_logits_visualize(pcs,
-                            stitch_indices_full.detach().cpu().numpy(), logits,
-                            title=f"predict pcs classify",
-                            export_data_config=get_export_config("_tmp/PC_and_stitch_vis", pic_num=120))
+        pass
+        # 按panel的点的旋转视频
+        # num_parts = batch["num_parts"].item()
+        # piece_id = batch["piece_id"].squeeze(0).detach().cpu().numpy()
+        # part_masks = [piece_id == part_idx for part_idx in range(num_parts)]
+        # pcs_parts = [pcs[msk] for msk in part_masks]
+        # pointcloud_visualize(pcs_parts,
+        #                      export_data_config=get_export_config("_tmp/point_cloud_vls", pic_num=120))
+        # 点分类的旋转视频
+        # pointcloud_visualize([stitch_pcs, unstitch_pcs],colormap='bwr', colornum=2,color_norm=[0,1],
+        #                      export_data_config=get_export_config("_tmp/point_cloud_cls_vls", pic_num=120))
+        # 缝合的旋转视频
+        # pointcloud_and_stitch_logits_visualize(pcs,
+        #                     stitch_indices_full.detach().cpu().numpy(), logits,
+        #                     title=f"predict pcs classify",
+        #                     export_data_config=get_export_config("_tmp/PC_and_stitch_vis", pic_num=120))
 
     stitch_mat_full.to(pcs.device)
     stitch_indices_full = torch.tensor(stitch_indices_full, device=pcs.device, dtype=torch.int64)
