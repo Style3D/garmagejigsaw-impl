@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from utils import pointcloud_visualize, pc_rescale
 from chamferdist import ChamferDistance
+from utils import pointcloud_visualize, pc_rescale
 
 
 """

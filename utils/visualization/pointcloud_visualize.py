@@ -9,7 +9,6 @@ import numpy as np
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
-from matplotlib import pyplot as plt
 
 
 def pointcloud_visualize(vertices_:np.array, title="", colormap="tab20", colornum=32, color_norm = [-10,10], export_data_config=None):

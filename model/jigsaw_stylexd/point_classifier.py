@@ -1,17 +1,13 @@
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.nn import BCELoss
 
 from model import MatchingBaseModel, build_encoder
-from .affinity_layer import build_affinity
 from .pc_classifier_layer import build_pc_classifier
 from .attention_layer import PointTransformerLayer, CrossAttentionLayer, PointTransformerBlock
-from utils import permutation_loss
-from utils import get_batch_length_from_part_points, square_distance
+from utils import get_batch_length_from_part_points
 from utils import pointcloud_visualize, pointcloud_and_stitch_visualize
-from utils import Sinkhorn, hungarian, stitch_indices2mat, stitch_mat2indices
 
 
 

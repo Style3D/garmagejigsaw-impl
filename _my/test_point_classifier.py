@@ -1,10 +1,6 @@
-from model.jigsaw_stylexd import PointClassifier
 
-# inference point stitch
-import os.path
-import torch
 from model import build_point_classifier
-from dataset import build_stylexd_dataloader_inference, build_stylexd_dataloader_train_val
+from dataset import build_stylexd_dataloader_inference # , build_stylexd_dataloader_train_val
 
 from utils import (to_device, get_pointstitch,
                    stitch_mat2indices, pointcloud_visualize,

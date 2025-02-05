@@ -13,9 +13,7 @@ import igl
 import trimesh
 import trimesh.sample
 
-from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation as R
-from torch import inference_mode
 from torch.utils.data import Dataset, DataLoader
 from scipy.ndimage import convolve1d
 
@@ -24,7 +22,6 @@ from utils import meshes_visualize, stitch_visualize, pointcloud_visualize, poin
 from utils import LatinHypercubeSample, random_point_in_convex_hull
 from utils import stitch_mat2indices, stitch_indices2mat, stitch_indices_order, stitch_mat_order, cal_mean_edge_len
 
-from scipy.stats.qmc import LatinHypercube
 
 class AllPieceMatchingDataset_stylexd(Dataset):
     """Geometry part assembly dataset, with fracture surface information.
@@ -151,19 +148,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                 assert os.path.exists(mesh_dir), f"No data folder corresponding to data_types:{self.data_types}"
                 data_list.extend(sorted(glob(os.path.join(mesh_dir, "garment_*"))))
             return data_list        # 根据数据类型读取不同的数据去inference
-        # if self.mode == "inference":
-        #     assert len(self.data_types)!=0, "self.data_types can't be empty in inference."
-        #     self.data_types = list(dict.fromkeys(self.data_types))  # 去除重复
-        #     data_list = []
-        #     for type_name in self.data_types:
-        #         mesh_dir = os.path.join(self.data_dir, self.mode)
-        #         mesh_dir = os.path.join(mesh_dir, type_name)
-        #         assert os.path.exists(mesh_dir), f"No data folder corresponding to data_types:{self.data_types}"
-        #         data_list.extend(sorted(glob(os.path.join(mesh_dir, "garment_*"))))
-        #     return data_list
 
-
-    # 用于训练inference董远数据的模型
     # random scale+rotate+move panel (default)
     def _random_SRM_default(self, pc, pcs, pc_idx, mean_edge_len):
         """
@@ -762,7 +747,11 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                 neighbors_boundaey = neighbor_boundary_points[b_point]
                 neighbors_boundaey_position = mesh.vertices[neighbors_boundaey]
                 neighbors_boundaey_vector = neighbors_boundaey_position[1] - neighbors_boundaey_position[0]
-                neighbors_boundaey_vector = neighbors_boundaey_vector/np.linalg.norm(neighbors_boundaey_vector)
+                try:
+                    neighbors_boundaey_vector = neighbors_boundaey_vector / np.linalg.norm(neighbors_boundaey_vector)
+                except Exception:
+                    a=1
+                    raise ValueError
 
                 b_point_pos = np.array(mesh.vertices[b_point])
                 center = get_pc_bbox(mesh.vertices[neighbor_points[b_point]], type="ccwh")[0]

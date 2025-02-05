@@ -11,7 +11,6 @@ import numpy as np
 import matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
 
-import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots

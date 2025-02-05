@@ -1,7 +1,8 @@
 import importlib
-
 from easydict import EasyDict as edict
 from dataset import get_dataset_config
+
+
 __C = edict()
 cfg = __C
 __C.MODEL_NAME = ""  # this name would be the result file name

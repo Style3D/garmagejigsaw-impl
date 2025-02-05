@@ -6,20 +6,10 @@ from utils import pointcloud_visualize
 
 def test_model(cfg):
     train_loader, val_loader = build_stylexd_dataloader_train_val(cfg)
-    test_loader = build_stylexd_dataloader_inference(cfg)
+    # test_loader = build_stylexd_dataloader_inference(cfg)
     for batch in train_loader:
         a=10
         break
-    # for batch in val_loader:
-    #     a = 10
-    #     break
-    # for batch in tqdm(test_loader):
-    #     # pointcloud_visualize(batch["pcs_gt"])
-    #     a=1
-    # for batch in val_loader:
-    #     pointcloud_visualize(batch["pcs_gt"])
-    #     a=10
-    #     break
 
 if __name__ == "__main__":
     from utils.config import cfg

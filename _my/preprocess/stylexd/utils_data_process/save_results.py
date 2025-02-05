@@ -1,7 +1,6 @@
 # 用于解析 StyleXD中的单个obj文件
 import os.path
 import numpy as np
-
 import json
 
 def save_results(obj_dict:dict, meshes:list, garment_save_dir:str, file_path):

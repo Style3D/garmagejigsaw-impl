@@ -1,6 +1,3 @@
-import os
-import pickle
-import numpy as np
 
 import torch
 from torch import optim
@@ -9,7 +6,6 @@ import pytorch_lightning
 from utils import filter_wd_parameters, CosineAnnealingWarmupRestarts
 
 import time
-import matplotlib.pyplot as plt
 
 
 class MatchingBaseModel(pytorch_lightning.LightningModule):

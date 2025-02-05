@@ -179,3 +179,4 @@ cython_debug/
 .vscode
 /_my/another_script/ckpt_transfer/data/
 /_tmp/garment_json_output/
+/_tmp/mesh_split/

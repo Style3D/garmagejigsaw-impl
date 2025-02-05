@@ -1,10 +1,5 @@
-import os
-import os.path
+
 import numpy as np
-import trimesh
-from trimesh import Trimesh
-import igl
-from igl import boundary_loop
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import plotly.graph_objects as go

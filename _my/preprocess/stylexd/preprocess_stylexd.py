@@ -3,12 +3,7 @@
 
 import os
 from glob import glob
-
-import numpy as np
 from tqdm import tqdm
-
-import igl
-import trimesh
 
 from _my.preprocess.stylexd.utils_data_process import *
 from utils import stitch_visualize

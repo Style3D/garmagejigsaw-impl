@@ -1,6 +1,5 @@
 # 从点点缝合关系获取边边缝合关系
 import json
-import math
 import torch
 import numpy as np
 from copy import deepcopy

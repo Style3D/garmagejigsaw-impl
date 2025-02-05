@@ -9,13 +9,12 @@
 
 
 import os
-from glob import glob
 import json
+from glob import glob
 from tqdm import tqdm
 
 import igl
 import trimesh
-
 from torch.utils.data import random_split
 
 # 一个衣服上的Panel如果过多

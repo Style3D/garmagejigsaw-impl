@@ -12,11 +12,11 @@ from utils import pointcloud_visualize, pointcloud_and_stitch_visualize, pointcl
 from utils.inference.save_result import save_result
 
 if __name__ == "__main__":
-    data_type = "Garmage_256"
+    data_type = "Garmage256"
     if not data_type in [
-        "Garmage_64",
-        "Garmage_64_ML",   # multi-layer of Garmage data
-        "Garmage_256",
+        "Garmage64",
+        "Garmage64_ML",   # multi-layer of Garmage data
+        "Garmage256",
         "brep_reso_128",
         "brep_reso_256",
         "brep_reso_512",
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         inf_rst = model(batch)
 
         # 获取点点缝合关系 -------------------------------------------------------------------------------------------------
-        if data_type == "Garmage_64":
+        if data_type == "Garmage64":
             stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="sym_max", mat_choice="col_max",
@@ -48,7 +48,7 @@ if __name__ == "__main__":
                                 filter_too_small=True, filter_logits=0.18,
                                 only_triu=True, filter_uncontinue=False,
                                 show_pc_cls=False, show_stitch=False, export_vis_result = False))
-        elif data_type == "Garmage_64_ML":
+        elif data_type == "Garmage64_ML":
             stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="sym_max", mat_choice="col_max",
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                                 filter_too_small=True, filter_logits=0.05,
                                 only_triu=True, filter_uncontinue=False,
                                 show_pc_cls=False, show_stitch=False, export_vis_result = False))
-        elif data_type == "Garmage_256":
+        elif data_type == "Garmage256":
             stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
                                 sym_choice="", mat_choice="col_max",
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         data_dir_list = cfg["DATA"]["DATA_TYPES"]["INFERENCE"]
         data_dir = "+".join(data_dir_list)
         save_dir  = os.path.join(save_dir, data_dir)
-        if data_type == "Garmage_256": data_id = int(batch['mesh_file_path'][0].split("_")[-1])
+        if data_type == "Garmage256": data_id = int(batch['mesh_file_path'][0].split("_")[-1])
         else: data_id=int(batch['data_id'])
         save_result(save_dir, data_id=data_id, garment_json=garment_json, fig=fig_comp)
         # input("Press ENTER to continue")

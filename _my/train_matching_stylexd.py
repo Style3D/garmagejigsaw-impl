@@ -1,6 +1,4 @@
 import os
-from datetime import datetime
-
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger

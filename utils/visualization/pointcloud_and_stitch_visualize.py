@@ -1,5 +1,4 @@
-import os
-import os.path
+
 from copy import deepcopy
 
 import numpy as np

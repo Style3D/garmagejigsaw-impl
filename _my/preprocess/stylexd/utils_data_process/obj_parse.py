@@ -1,11 +1,6 @@
 # 用于解析 StyleXD中的单个obj文件
-import os.path
 
 import numpy as np
-import trimesh
-from trimesh import Trimesh
-import igl
-from igl import boundary_loop
 
 def parse_obj_file(file_path):
     with open(file_path, 'r') as file:

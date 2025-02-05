@@ -1,7 +1,5 @@
-import math
-import torch
-from torch import nn, Tensor
-from torch.nn.parameter import Parameter
+
+from torch import nn
 
 
 def build_pc_classifier(dim):

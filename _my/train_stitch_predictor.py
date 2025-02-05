@@ -1,11 +1,9 @@
 import os
-from datetime import datetime
-
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 
-from model import build_point_classifier, build_stitch_predictor, build_model
+from model import build_stitch_predictor
 from dataset import build_stylexd_dataloader_train_val
 
 def train_model(cfg):
