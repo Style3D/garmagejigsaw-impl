@@ -31,7 +31,9 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
         self.use_local_point_feature = cfg.MODEL.get("USE_LOCAL_POINT_FEATURE", True)       # 是否提取点的局部特征
         self.use_global_point_feature = cfg.MODEL.get("USE_GLOBAL_POINT_FEATURE", True)     # 是否提取点的局部特征
 
-        self.use_uv_feature = cfg.MODEL.get("USE_UV_FEATURE", False)    # 是否使用UV特征
+        self.use_uv_feature = cfg.MODEL.get("USE_UV_FEATURE", False)                                    # 是否使用UV特征
+        self.use_local_uv_feature = cfg.MODEL.get("USE_LOCAL_UV_FEATURE", self.use_uv_feature)                     # 是否提取UV的局部特征（为了兼容）
+        self.use_global_uv_feature = cfg.MODEL.get("USE_GLOBAL_UV_FEATURE", False)     # 是否提取UV的局部特征
 
         self.pc_feat_dim = self.cfg.MODEL.get("PC_FEAT_DIM", 128)
         self.uv_feat_dim = self.cfg.MODEL.get("UV_FEAT_DIM", 128)
@@ -44,7 +46,11 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
             if self.use_global_point_feature:
                 self.backbone_feat_dim += self.pc_feat_dim
         if self.use_uv_feature:
-            self.backbone_feat_dim += self.uv_feat_dim
+            if self.use_local_uv_feature:
+                self.backbone_feat_dim += self.uv_feat_dim
+            if self.use_global_uv_feature:
+                self.backbone_feat_dim += self.uv_feat_dim
+
         assert self.backbone_feat_dim!=0, "No feature will be extracted"
 
         if self.use_point_feature:
@@ -216,8 +222,12 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                 pcs_feats_global = self._extract_pointcloud_feats(pcs, torch.tensor([N_point]*B_size))
                 features.append(pcs_feats_global)
         if self.use_uv_feature:
-            uv_feats = self._extract_uv_feats(uv.to(torch.float32), batch_length)
-            features.append(uv_feats)
+            if self.use_local_uv_feature:
+                uv_feats = self._extract_uv_feats(uv.to(torch.float32), batch_length)
+                features.append(uv_feats)
+            if self.use_global_uv_feature:
+                uv_feats = self._extract_uv_feats(uv.to(torch.float32), torch.tensor([N_point]*B_size))
+                features.append(uv_feats)
         assert len(features)>0, "None feature extracted!"
         features = torch.concat(features,dim=-1)
 
@@ -338,7 +348,9 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
             # 获取 global的 ds_mat
             ds_mat_global = torch.zeros((B_size,N_point,N_point), device=ds_mat.device)
             for B in range(B_size):
-                ds_mat_global[B][pc_cls_mask[B] == 1][:, pc_cls_mask[B] == 1] = ds_mat[B][:n_stitch_pcs_sum[B], :n_stitch_pcs_sum[B]]
+                mask = pc_cls_mask[B] == 1
+                indices = torch.where(mask)[0]
+                ds_mat_global[B].index_put_((indices[:, None], indices), ds_mat[B][:n_stitch_pcs_sum[B], :n_stitch_pcs_sum[B]])
 
             # 获取 对称的 gt_mat
             stitch_pcs_gt_mat_half = gt_mat

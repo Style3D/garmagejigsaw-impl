@@ -14,10 +14,10 @@ WANDB:
 
 GPUS: [0]
 BATCH_SIZE: 1
-NUM_WORKERS: 1
+NUM_WORKERS: 4
 
 TRAIN:
-  NUM_EPOCHS: 100
+  NUM_EPOCHS: 50
   LR: 0.001
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
@@ -28,9 +28,9 @@ TRAIN:
 MODEL:
   USE_POINT_FEATURE: True   # 是否提取点特征
   USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
-  USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
-  USE_UV_FEATURE: True     # 是否提取UV特征
-  TF_LAYER_NUM: 3
+  USE_GLOBAL_POINT_FEATURE: False  # 是否提取点的全局特征
+  USE_UV_FEATURE: True      # 是否提取UV特征
+  TF_LAYER_NUM: 3     # PT层的数量
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
   IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   TRAIN_IN_STAGE:
@@ -38,9 +38,9 @@ MODEL:
     VAL_ACC: 0.8
   PC_CLS_THRESHOLD: 0.5
   LOSS:
-    MAT_LOSS_TYPE: "local"
-    w_cls_loss: 1.
-    w_mat_loss: 0.0
+    MAT_LOSS_TYPE: "global"  # "local" OR "global"
+    w_cls_loss: 1.0
+    w_mat_loss: 0.008
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1
@@ -51,7 +51,7 @@ DATA:
   DATA_TYPES:
     INFERENCE: ["Garmage256_SL"]
 
-  NUM_PC_POINTS: 2500
+  NUM_PC_POINTS: 1500
 
   SHUFFLE: True  # 打乱dataset
 
@@ -68,20 +68,20 @@ DATA:
     VAL: True
     INFERENCE: False
   SHRINK_MESH_PARAM:
-    TRAIN: 0.2
-    VAL: 0.2
+    TRAIN: 0.8
+    VAL: 0.8
     INFERENCE: 1
 
   PCS_NOISE_TYPE: default  # default  normal
   PCS_NOISE_STRENGTH: 0.0
   USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
-  STITCH_NOISE_STRENGTH: 1.5
+  STITCH_NOISE_STRENGTH: 0.3
   STITCH_NOISE_RANDOM_RANGE: [0.8, 2.2]
 
   PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
-    TRAIN: default
+    TRAIN: bbox
     VAL: default
-    INFERENCE: default
+    INFERENCE: default  # default OR bbox
   SCALE_RANGE: 0.07
   ROT_RANGE: 3
   TRANS_RANGE: 15

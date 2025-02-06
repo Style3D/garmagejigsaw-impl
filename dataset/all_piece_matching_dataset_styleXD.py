@@ -4,14 +4,18 @@ import os
 import random
 from glob import glob
 
+
 import numpy as np
 import torch
-# [todo] 将新的加噪方式（BBOX加噪）做出来
-from diffusers import DDPMScheduler
+
 
 import igl
 import trimesh
 import trimesh.sample
+
+# import diffusers.schedulers
+from diffusers import DDPMScheduler
+# from diffusers.schedulers import DDPMScheduler
 
 from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset, DataLoader
@@ -88,9 +92,19 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # self.shuffle_parts = shuffle_parts  # shuffle part orders
 
         self.panel_noise_type = panel_noise_type
-        self.scale_range = scale_range
-        self.rot_range = rot_range  # rotation range in degree
-        self.trans_range = trans_range  # translation range
+        if self.panel_noise_type == "default":
+            self.scale_range = scale_range
+            self.rot_range = rot_range  # rotation range in degree
+            self.trans_range = trans_range  # translation range
+        elif self.panel_noise_type == "bbox":
+            self.noise_scheduler = DDPMScheduler(
+                num_train_timesteps=1000,
+                beta_schedule='linear',
+                prediction_type='epsilon',
+                beta_start=0.0001,
+                beta_end=0.02,
+                clip_sample=False,
+            )
         """
         stitch（only training）：根据缝合关系按比例采样
         boundary_mesh：在mesh的边缘点上采样
@@ -114,10 +128,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
 
         print("dataset length: ", len(self.data_list))
 
-        # additional data to load, e.g. ('part_ids', 'instance_label')
         self.data_keys = data_keys
 
-        # overfit = 10
 
         if overfit > 0:
             self.data_list = self.data_list[:overfit]
@@ -200,17 +212,38 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # pc = pc + trans_gt
         return pc, trans_gt, quat_gt
 
+    # apply bbox changing to the pointcloud
+    def transform_pc(self, pc, bbox_old, bbox_new):
+        # 解析 BBOX_old 和 BBOX_new
+        xyz_min_old, xyz_max_old = np.array(bbox_old[:3]), np.array(bbox_old[3:])
+        xyz_min_new, xyz_max_new = np.array(bbox_new[:3]), np.array(bbox_new[3:])
+
+        center_old = (xyz_min_old + xyz_max_old) / 2
+        size_old = xyz_max_old - xyz_min_old
+
+        center_new = (xyz_min_new + xyz_max_new) / 2
+        size_new = xyz_max_new - xyz_min_new
+
+        scale = size_new / size_old
+
+        pc_transformed = (pc - center_old) * scale + center_new
+
+        return pc_transformed
+
     # random scale+move panel by add noise on panel bbox
     def _random_SM_byBbox(self, pc):
         # [todo] 给BBOX随机加噪
-        surfPos = get_pc_bbox(pc, type="xyxy")
-        surfPos = torch.Tensor(np.concatenate(surfPos), device="cpu").unsqueeze(0)
+        bbox_old = get_pc_bbox(pc, type="xyxy")
+        bbox_old = torch.Tensor(np.concatenate(bbox_old), device="cpu").unsqueeze(0)
         aug_ts = torch.randint(0, 15, (1,), device="cpu").long()
+        aug_noise = torch.randn(bbox_old.shape, device="cpu")
         # aug_noise = torch.randn(surfPos.shape,device="cpu")
         # surfPos = self.noise_scheduler.add_noise(surfPos, aug_noise, aug_ts)
-        # [todo] 让部件填入加噪后的BBOX，返回
+        bbox_new = self.noise_scheduler.add_noise(bbox_old, aug_noise, aug_ts)
 
-        raise NotImplementedError
+        pc_new = self.transform_pc(pc, bbox_old.squeeze(0), bbox_new.squeeze(0))
+
+        return pc_new
 
     def _shuffle_pc(self, pc, pc_gt):
         """pc: [N, 3]"""
@@ -731,7 +764,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                     neighbor_points[point] = neighbors
 
                     if p_idx==0:
-                        neighbors_boundaey = [loop[-1], loop[p_idx+1]]
+                        if len(loop) == 1: neighbors_boundaey = [loop[p_idx], loop[p_idx]]  # 有些位于板片内部的单独的点
+                        else: neighbors_boundaey = [loop[-1], loop[p_idx + 1]]
                     elif p_idx==len(loop)-1:
                         neighbors_boundaey = [loop[p_idx-1], loop[0]]
                     else:
@@ -747,24 +781,23 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                 neighbors_boundaey = neighbor_boundary_points[b_point]
                 neighbors_boundaey_position = mesh.vertices[neighbors_boundaey]
                 neighbors_boundaey_vector = neighbors_boundaey_position[1] - neighbors_boundaey_position[0]
-                try:
+                if np.linalg.norm(neighbors_boundaey_vector)==0:  # 存在某些点，其两个相邻点是重合的，对于这种点我们不进行收缩
+                    new_vertices_positions[b_point] =  np.array(mesh.vertices[b_point])
+                else:
                     neighbors_boundaey_vector = neighbors_boundaey_vector / np.linalg.norm(neighbors_boundaey_vector)
-                except Exception:
-                    a=1
-                    raise ValueError
 
-                b_point_pos = np.array(mesh.vertices[b_point])
-                center = get_pc_bbox(mesh.vertices[neighbor_points[b_point]], type="ccwh")[0]
+                    b_point_pos = np.array(mesh.vertices[b_point])
+                    center = get_pc_bbox(mesh.vertices[neighbor_points[b_point]], type="ccwh")[0]
 
-                AB = center - b_point_pos
-                proj_v_AB = (np.dot(AB, neighbors_boundaey_vector) / np.dot(neighbors_boundaey_vector, neighbors_boundaey_vector)) * neighbors_boundaey_vector
-                perpendicular = AB - proj_v_AB
+                    AB = center - b_point_pos
+                    proj_v_AB = (np.dot(AB, neighbors_boundaey_vector) / np.dot(neighbors_boundaey_vector, neighbors_boundaey_vector)) * neighbors_boundaey_vector
+                    perpendicular = AB - proj_v_AB
 
-                target_position = b_point_pos + perpendicular
+                    target_position = b_point_pos + perpendicular
 
-                new_position = (shrink_param * b_point_pos +
-                                (1 - shrink_param) * target_position)
-                new_vertices_positions[b_point] = new_position
+                    new_position = (shrink_param * b_point_pos +
+                                    (1 - shrink_param) * target_position)
+                    new_vertices_positions[b_point] = new_position
 
             # 再应用到mesh里
             for b_point in all_boundary_points:
@@ -876,7 +909,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # # pointcloud_and_stitch_visualize(all_pcs, mat_gt)
 
 
-        cur_pcs, cur_pcs_gt ,cur_quat, cur_trans= [], [], [], []
+        cur_pcs, cur_pcs_gt = [], []
+        # cur_quat, cur_trans = [], []
 
         points_end_idxs = np.cumsum(nps)
 
@@ -887,22 +921,23 @@ class AllPieceMatchingDataset_stylexd(Dataset):
 
             pc_gt = pc.copy()
             if self.panel_noise_type == "default":
-                # [todo] 这里改成用 byBBOX
-                # self._random_SM_byBbox(pc)
                 pc, gt_trans, gt_quat = self._random_SRM_default(pc, pcs, idx, mean_edge_len)
+            elif self.panel_noise_type == "bbox":
+                pc = self._random_SM_byBbox(pc)
             else:
                 raise NotImplementedError("")
 
             cur_pcs.append(pc)
             cur_pcs_gt.append(pc_gt)
-            cur_quat.append(gt_quat)
-            cur_trans.append(gt_trans)
+            # cur_quat.append(gt_quat)
+            # cur_trans.append(gt_trans)
 
         cur_pcs = np.concatenate(cur_pcs).astype(np.float32)  # [N_sum, 3]
         cur_pcs_gt = np.concatenate(cur_pcs_gt).astype(np.float32)  # [N_sum, 3]
         # pointcloud_visualize(cur_pcs)
-        cur_quat = self._pad_data(np.stack(cur_quat, axis=0), self.max_num_part).astype(np.float32)  # [P, 4]
-        cur_trans = self._pad_data(np.stack(cur_trans, axis=0), self.max_num_part).astype(np.float32)  # [P, 3]
+
+        # cur_quat = self._pad_data(np.stack(cur_quat, axis=0), self.max_num_part).astype(np.float32)  # [P, 4]
+        # cur_trans = self._pad_data(np.stack(cur_trans, axis=0), self.max_num_part).astype(np.float32)  # [P, 3]
 
         # pointcloud_and_stitch_visualize(cur_pcs,mat_gt)
         n_pcs = self._pad_data(np.array(nps), self.max_num_part).astype(np.int64)  # [P]
@@ -913,8 +948,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             "pcs": cur_pcs,                             # pointclouds after random transformation
             "pcs_gt": cur_pcs_gt,                       # pointclouds before random transformation
             "n_pcs": n_pcs,                             # point num of each part
-            "part_quat": cur_quat,
-            "part_trans": cur_trans,
+            # "part_quat": cur_quat,                    # [todo] jigsaw项目遗留，似乎无用
+            # "part_trans": cur_trans,
             "num_parts": num_parts,
             "part_valids": valids,
             "data_id": index,

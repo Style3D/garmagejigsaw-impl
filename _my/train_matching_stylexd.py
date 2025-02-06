@@ -30,7 +30,7 @@ def train_model(cfg):
         dirpath=cfg.MODEL_SAVE_PATH,
         filename="model_{epoch:03d}",
         monitor="epoch",
-        every_n_epochs=4,  # 每间隔 n epoch保存一次
+        every_n_epochs=5,  # 每间隔 n epoch保存一次
         save_top_k=-1,  # 保存所有
         mode=cfg.CALLBACK.CHECKPOINT_MODE,
         save_last=True,
@@ -52,7 +52,7 @@ def train_model(cfg):
         benchmark=cfg.CUDNN,
         gradient_clip_val=0.1, # 梯度裁剪
         check_val_every_n_epoch=cfg.TRAIN.VAL_EVERY,
-        log_every_n_steps=10,
+        log_every_n_steps=5,
         profiler='simple',
         detect_anomaly=True,
     )

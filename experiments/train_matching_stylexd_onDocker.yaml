@@ -1,3 +1,4 @@
+
 MODEL_NAME: jigsaw_StyleXD
 MODULE: jigsaw_stylexd
 
@@ -5,10 +6,9 @@ PROJECT: jigsaw
 
 DATASET: stylexd.all_piece_matching
 
+# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
 
-WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
-
-RESUME: true
+RESUME: false
 WANDB:
   ID: gammtewg
 
@@ -17,7 +17,7 @@ BATCH_SIZE: 12
 NUM_WORKERS: 12
 
 TRAIN:
-  NUM_EPOCHS: 300
+  NUM_EPOCHS: 120
   LR: 0.001
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
@@ -28,18 +28,17 @@ TRAIN:
 MODEL:
   USE_POINT_FEATURE: True   # 是否提取点特征
   USE_LOCAL_POINT_FEATURE: True    # 是否提取点的局部特征
-  USE_GLOBAL_POINT_FEATURE: True  # 是否提取点的全局特征
+  USE_GLOBAL_POINT_FEATURE: False  # 是否提取点的全局特征
   USE_UV_FEATURE: True      # 是否提取UV特征
-  TF_LAYER_NUM: 3  # PT层的数量
+  TF_LAYER_NUM: 3     # PT层的数量
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
-  IS_TRAIN_IN_STAGE: True  # 是否分阶段训练
+  IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   TRAIN_IN_STAGE:
     W_CLS: 0.08
     VAL_ACC: 95
-
   PC_CLS_THRESHOLD: 0.5
   LOSS:
-    MAT_LOSS_TYPE: "local"
+    MAT_LOSS_TYPE: "global"  # "local" OR "global"
     w_cls_loss: 1.0
     w_mat_loss: 0.008
 
@@ -76,17 +75,16 @@ DATA:
   PCS_NOISE_TYPE: default  # default  normal
   PCS_NOISE_STRENGTH: 0.0
   USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
-  STITCH_NOISE_STRENGTH: 1.5
+  STITCH_NOISE_STRENGTH: 0.3
   STITCH_NOISE_RANDOM_RANGE: [0.8, 2.2]
 
   PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
-    TRAIN: default
-    VAL: default
-    INFERENCE: default
+    TRAIN: bbox
+    VAL: bbox
+    INFERENCE: default  # default OR bbox
   SCALE_RANGE: 0.07
   ROT_RANGE: 3
   TRANS_RANGE: 5
-
 
 # STATS is for eval
 STATS: "./results/jigsaw_4x4_128_512_250e_cosine_everyday/stats/eval"
