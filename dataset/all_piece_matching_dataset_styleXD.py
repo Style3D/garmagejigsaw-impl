@@ -256,8 +256,10 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         pc_gt = pc_gt[order_indices]
         return pc, pc_gt, order_indices
 
-    def _pad_data(self, data, pad_size=None):
+    def _pad_data(self, data, pad_size=None, pad_num=0):
         """Pad data to shape [`self.max_num_part`, data.shape[1], ...]."""
+        # [todo] 改成可以pad任意数字，但默认pad 0
+
         if pad_size is None:
             pad_size = self.max_num_part
         data = np.array(data)
@@ -265,7 +267,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             pad_shape = (pad_size,) + tuple(data.shape[1:])
         else:
             pad_shape = (pad_size,)
-        pad_data = np.zeros(pad_shape, dtype=data.dtype)
+        pad_data = np.ones(pad_shape, dtype=data.dtype) * pad_num
         pad_data[: data.shape[0]] = data
         return pad_data
 
@@ -346,7 +348,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             nps=nps,
             mat_gt=None,
             mean_edge_len=mean_edge_len,
-            normalize_range=normalize_range
+            normalize_range=normalize_range,
+            panel_instance_seg=None
         )
         return sample_result
 
@@ -576,7 +579,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # # pointcloud_visualize([sampled_points_CH[0:stitched_sample_num*2],sampled_points_CH[stitched_sample_num*2:]])
         # # pointcloud_and_stitch_visualize(sampled_points_CH,mat_gt[:100])
 
-        # [todo] 可能存在冗余代码，记得清理下
+        # [todo] 上面注释的代码可能真的没啥用，记得清理下
         sampled_points_CH =  vertices[all_sample_idx]
 
         # PART 5 -------------------------------------------------------------------------------------------------------
@@ -626,6 +629,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             mat_gt=mat_gt,              # gt 点点缝合关系
             mean_edge_len=mean_edge_len,
             normalize_range=normalize_range,
+            panel_instance_seg=np.arange(len(nps))
         )
         # 采样点的UV信息
         if full_uv_info is not None:
@@ -824,7 +828,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # 保存结果
         # meshes_visualize(meshes, "after_shrink")
 
-    def _get_pcs(self, data_folder):
+    def _get_pcs(self, data_folder, annotations_json_path):
         meshes = self.load_meshes(data_folder)
 
         # 让mesh的每个边界点往内缩
@@ -842,6 +846,9 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             sample_result = self.sample_point_byBoundaryPcs(meshes, self.num_points)
             if full_uv_info is not None:
                 sample_result["uv"] = full_uv_info
+            with open(annotations_json_path, "r", encoding="utf-8") as f:
+                ann_json = json.load(f)
+            sample_result["panel_instance_seg"] = ann_json["panel_instance_seg"]
             return sample_result
         elif self.pcs_sample_type == "stitch":
             if self.num_points%2!=0:
@@ -871,13 +878,15 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         annotations_json_path = annotations_json_path if os.path.exists(annotations_json_path) else ""
 
         # 进行采样 ---------------------------------------------------------------------------------------------------
-        sample_result= self._get_pcs(mesh_file_path)
+        sample_result= self._get_pcs(mesh_file_path, annotations_json_path)
         pcs = sample_result["pcs"]
         nps = sample_result["nps"]
         mat_gt = sample_result["mat_gt"]
         piece_id = sample_result["piece_id"]
         mean_edge_len = sample_result["mean_edge_len"]
         normalize_range = sample_result["normalize_range"]
+        panel_instance_seg = sample_result["panel_instance_seg"]
+
         # 对uv进行和pc相同的normalize
         if "uv" in sample_result.keys():
             uv = sample_result["uv"]
@@ -966,10 +975,11 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         n_pcs = self._pad_data(np.array(nps), self.max_num_part).astype(np.int64)  # [P]
         valids = np.zeros(self.max_num_part, dtype=np.float32)
         valids[:num_parts] = 1.0
-
+        panel_instance_seg = self._pad_data(np.array(panel_instance_seg), self.max_num_part, -1).astype(np.int64)
+        # [todo]panel_instance_seg传出去后，在提取特征时，添加一步用于将属于同一panel实例的点云合并到一起去
         data_dict = {
             "pcs": cur_pcs,                             # pointclouds after random transformation
-            "pcs_gt": cur_pcs_gt,                       # pointclouds before random transformation
+            # "pcs_gt": cur_pcs_gt,                       # pointclouds before random transformation
             "n_pcs": n_pcs,                             # point num of each part
             "num_parts": num_parts,
             "part_valids": valids,
@@ -978,7 +988,8 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             "mesh_file_path": mesh_file_path,               # path of this garment
             "garment_json_path": garment_json_path,         # path of garment.json if exist
             "annotations_json_path": annotations_json_path, # path of annotations.json if exist
-            "normalize_range": normalize_range
+            "normalize_range": normalize_range,
+            "panel_instance_seg": panel_instance_seg
         }
         if uv is not None:
             # 添加一列零，不然pointnet好像提取不了特征

@@ -5,26 +5,13 @@ import uuid
 import torch
 import numpy as np
 from copy import deepcopy
+from utils import is_contour_OutLine
 
 # 获取一段随机的 uuid
 def get_random_uuid():
     id = str(uuid.uuid4().hex)
     result = id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:]
     return result
-
-# 判断一个contour是不是净边
-def is_contour_OutLine(contour_idx, panel_instance_seg):
-    if contour_idx == 0 or panel_instance_seg[contour_idx] != panel_instance_seg[contour_idx - 1]:
-        is_OL = True
-        pos = 0
-    else:
-        is_OL = False
-        pos = torch.sum(panel_instance_seg[:contour_idx+1]==panel_instance_seg[contour_idx])-1
-    """
-    is_OL:  是否是净边
-    pos:    这个是panel上的第几个contour（从0开始）
-    """
-    return is_OL, pos
 
 def apply_point_info(stitch_edge_side, point_info):
     stitch_edge_side['clothPieceId'] = point_info['contour_id']
@@ -188,7 +175,7 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
         # 设定阈值，根据采样频率delta来动态调整阈值的大小 ---------------------------------------------------------------------------------
         index_dis_optimize_thresh = 4   # 优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
         index_dis_side_thresh = 2       # 缝边与边端点之间的阈值（小于阈值的缝边的端点将在优化时吸附到边的端点上）
-        adjust_param = 0.023 / 0.023  # 这个用于根据采样频率调整阈值的大小 [todo] 这是个预留接口 看到那个 “0.023/0.023” 了吗？后续需要在这里将采样频率考虑进来
+        adjust_param = 1  # 这个用于根据采样频率调整阈值的大小 [todo] 预留，可在这里将采样频率考虑进来
         index_dis_optimize_thresh = index_dis_optimize_thresh * adjust_param
         index_dis_side_thresh = index_dis_side_thresh * adjust_param
 
@@ -303,7 +290,7 @@ def optimize_stitch_edge_list(stitch_edge_list_paramOrder, index_dis_optimize_th
 
 
 def apply_stitch_param(st_eg, param):
-    st_eg['clothPieceId'] = param['contour_id']
+    st_eg['clothPieceId'] = param['panel_id']
     st_eg['edgeId'] = param['edge_id']
     st_eg['param'] = param['param']
 
@@ -367,6 +354,8 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
     all_point_info = {}
     very_small_gap = 1e-5   # [todo] 可能可以删了
     global_param = 0  # 一个点的全局param
+    contourid2panelid = {}  # 用于将contour_id映射到panel_id
+
     for contour_idx in range(len(n_pcs_cumsum)):
         panel_instance_idx = panel_instance_seg[contour_idx]
         if contour_idx == 0:
@@ -404,14 +393,13 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
                                       else torch.tensor(point_start_idx, dtype=point_end_idx.dtype,device=point_end_idx.device)
 
         seqEdges_json = panel_json["seqEdges"][contour_pos]
-
+        contourid2panelid[contour_id] = panel_json["id"]
         for edge_idx, (e_approx, e_approx_global) in enumerate(zip(contour_edges_approx, contour_edges_approx_global)):
             # === 构建每个Edge的信息 ===
             edge_json = seqEdges_json["edges"][edge_idx]
             all_edge_info[edge_json["id"]] = {"id":edge_json["id"], "contour_id":contour_info["id"], "points_info":[]}
             edge_info = all_edge_info[edge_json["id"]]
             contour_info["edges_info"][edge_json["id"]] = edge_info
-
             # 获取这个Panel上每个edge上的所有点的按顺序的index
             if ((edge_idx==0 and e_approx_global[0]>e_approx_global[1]) or (edge_idx==contour_edge_num-1 and e_approx_global[0]>e_approx_global[1])):
                 edge_points_idx = torch.concat([torch.arange(e_approx_global[0], point_end_idx), torch.arange(point_start_idx, e_approx_global[1]+1)])
@@ -449,7 +437,7 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
     # 将信息转换为N个由缝合点对组成的list ------------------------------------------------------------------------------------
     # 缝合关系的映射
     stitch_mat = torch.zeros((len(pcs)), dtype=torch.int64, device=device_)-1
-    stitch_mat[stitch_indices[:, 0]] = stitch_indices[:, 1]  # 只去前一半的部分，因为软件中的缝合不能重复
+    stitch_mat[stitch_indices[:, 0]] = stitch_indices[:, 1]  # 只取前一半的部分，因为软件中的缝合不能重叠
     # stitch_mat[stitch_indices[:, 1]] = stitch_indices[:, 0]
 
     all_stitch_points_list = []
@@ -599,15 +587,16 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
 
     # 为每组连续且属于同一个edge(contour?)的点按照param进行排序 --------------------------------------------------------------------------
     cmpfun = lambda x: (x["global_param"])
+    judge_key = "contour_id"  # [todo] 如果有问题，改回 “"edge_id"”
     for s_idx, stitch_points_list in enumerate(all_stitch_points_list):
         unordered_stitch_points_list = []
         # [todo] 这里和下面几行的逻辑可能有问题，或许“contour_id”进行排序
-        start_contour_id = stitch_points_list[0][1]["edge_id"]
+        start_contour_id = stitch_points_list[0][1][judge_key]
         start_point_idx = 0
         for point_idx, stitch_point in enumerate(stitch_points_list):
             # 如果edge_id发生了变化，或是这个Panel结束了
-            if stitch_point[1]["edge_id"] != start_contour_id or point_idx == len(stitch_points_list)-1:
-                if stitch_point[1]["edge_id"] == start_contour_id and point_idx == len(stitch_points_list)-1:
+            if stitch_point[1][judge_key] != start_contour_id or point_idx == len(stitch_points_list)-1:
+                if stitch_point[1][judge_key] == start_contour_id and point_idx == len(stitch_points_list)-1:
                     unordered_stitch_points_list.append(stitch_point[1])
 
                 if isCC_order_list[s_idx][1]: reverse = True
@@ -618,7 +607,7 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
                     stitch_points_list[start_point_idx + i][1] = ordered_stitch_points_list[i]
 
                 start_point_idx = point_idx
-                start_contour_id = stitch_point[1]["edge_id"]
+                start_contour_id = stitch_point[1][judge_key]
                 unordered_stitch_points_list = [stitch_point[1]]
             else:
                 unordered_stitch_points_list.append(stitch_point[1])
@@ -655,7 +644,6 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
 
     # 将太短的全部过滤掉 ---------------------------------------------------------------------------------------------------
     all_stitch_points_list, isCC_order_list = filter_too_short(all_stitch_points_list, isCC_order_list, fliter_len = fliter_len) # [modified]
-
 
     # 获取缝合信息 --------------------------------------------------------------------------------------------------------
     # 用于存放所有缝合边信息(用于后续优化)
@@ -778,6 +766,11 @@ def pointstitch_2_edgestitch2(batch, inf_rst, stitch_mat, stitch_indices,
     stitch_edge_list = stitch_edge_list_merged
 
     # 将缝合数据转换为 AIGP 文件中 "stitches" 的格式 ------------------------------------------------------------------------
+    # 将stitch_edge_list中，非outLine的contourid改为对应的panel的id
+    for stitch_edge in stitch_edge_list:
+        for k in ['start_point', 'end_point']:
+            stitch_edge[k]["panel_id"] = contourid2panelid[stitch_edge[k]["contour_id"]]
+    # 转格式
     stitch_edge_json_list = []
     for start_stitch_edge, end_stitch_edge in zip(stitch_edge_list[::2], stitch_edge_list[1::2]):
         stitch_edge_json = get_new_stitch()

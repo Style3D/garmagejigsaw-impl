@@ -1,3 +1,4 @@
+from copy import deepcopy
 
 import torch
 from torch import nn
@@ -9,7 +10,7 @@ from .affinity_layer import build_affinity
 from .pc_classifier_layer import build_pc_classifier
 from .attention_layer import PointTransformerLayer, CrossAttentionLayer, PointTransformerBlock
 from utils import permutation_loss
-from utils import get_batch_length_from_part_points, square_distance
+from utils import get_batch_length_from_part_points, square_distance, is_contour_OutLine, merge_c2p_byPanelIns
 from utils import pointcloud_visualize, pointcloud_and_stitch_visualize
 from utils import Sinkhorn, hungarian, stitch_indices2mat, stitch_mat2indices
 
@@ -196,24 +197,33 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
             stitch_pcs_gt_mat[B][:n_stitch_pcs_sum[B], :n_stitch_pcs_sum[B]] = mat_gt[B][pc_cls_mask[B] == 1][:,pc_cls_mask[B] == 1]
         return stitch_pcs_gt_mat
 
-    def _get_global_ds_mat(self):
-        pass
-
     def forward(self, data_dict):
         out_dict = dict()
+        # 根据 panel_instance_seg，将contours合并为panels
+        data_dict = merge_c2p_byPanelIns(deepcopy(data_dict))
 
         pcs = data_dict.get("pcs", None)  # [B_size, N_point, 3]
         uv = data_dict.get("uv", None)
+        B_size, N_point, _ = pcs.shape
         piece_id = data_dict["piece_id"]
-        n_pcs = data_dict["n_pcs"]  # [B, P]
         part_valids = data_dict["part_valids"]
         n_valid = torch.sum(part_valids, dim=1).to(torch.long)  # [B]
+        panel_instance_seg = data_dict["panel_instance_seg"]
+        # n_pcs_ [B, C] 当前为“每个contour有多少点，需要进行合并”
+        n_pcs = data_dict["n_pcs"]
 
-        B_size, N_point, _ = pcs.shape
+        # # n_pcs [B, P] 每个panel有多少点
+        # n_pcs = torch.zeros_like(n_pcs_)
+        # for B in range(B_size):
+        #     for contour_idx, num in enumerate(n_pcs_[B]):
+        #         panel_idx = panel_instance_seg[B][contour_idx]
+        #         # if not is_contour_OutLine(contour_idx, panel_instance_seg[B])[0]:
+        #         # n_pcs[B][panel_idx] += num
 
         batch_length = get_batch_length_from_part_points(n_pcs, n_valids=n_valid).to(self.device)
         # === 用PointNet从点云或UV中提取特征，并拼接 ===
         features = []
+        # [todo] 根据panel_instance_seg将属于同一个panel的点云（在 n_pcs 中）进行合并
         if self.use_point_feature:
             if self.use_local_point_feature:
                 local_pcs_feats  = self._extract_pointcloud_feats(pcs, batch_length)
@@ -299,11 +309,9 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
 
     def _loss_function(self, data_dict, out_dict={}, optimizer_idx=-1):
         pcs = data_dict["pcs"]
-        pcs_gt = data_dict["pcs_gt"]
-        B_size, N_point, _ = pcs_gt.shape
+        # pcs_gt = data_dict["pcs_gt"]
+        B_size, N_point, _ = pcs.shape
         n_stitch_pcs_sum = out_dict["n_stitch_pcs_sum"]
-        part_valids = data_dict["part_valids"]
-        n_pcs = data_dict["n_pcs"]
 
         loss_dict = {
             "batch_size": B_size,
@@ -439,6 +447,7 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
         #     with torch.no_grad():
         #         self.cls_loss_list.append(float(cls_loss))
         #         self.mat_loss_list.append(float(mat_loss))
+
         if self.is_train_in_stages and self.trainer.validating:
             with torch.no_grad():
                 self.val_ACC_list.append(float(ACC))

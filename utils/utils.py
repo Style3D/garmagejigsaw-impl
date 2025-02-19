@@ -94,3 +94,51 @@ def get_batch_length_from_part_points(n_pcs, n_valids=None, part_valids=None):
     batch_length = torch.cat(batch_length_list)
     assert batch_length.shape[0] == torch.sum(n_valids)
     return batch_length
+
+# 判断一个contour是不是净边
+def is_contour_OutLine(contour_idx, panel_instance_seg):
+    if contour_idx == 0 or panel_instance_seg[contour_idx] != panel_instance_seg[contour_idx - 1]:
+        is_OL = True
+        pos = 0
+    else:
+        is_OL = False
+        pos = torch.sum(panel_instance_seg[:contour_idx+1]==panel_instance_seg[contour_idx])-1
+    """
+    is_OL:  是否是净边
+    pos:    这个是panel上的第几个contour（从0开始）
+    """
+    return is_OL, pos
+
+def merge_c2p_byPanelIns(batch):
+    """
+    Combine contours of a batch to panels by panel_instance_seg.
+    :return:
+    """
+    B_size, N_point, _ = batch["pcs"].shape
+
+    # 重新计算 n_pcs
+    for B in range(B_size):
+        # [todo] 重新计算 n_pcs、
+        n_pcs = batch["n_pcs"][B].clone()
+        batch["n_pcs"][B] = 0
+        for contour_idx in range(batch["num_parts"][B]):
+            num = n_pcs[contour_idx]
+            panel_idx = batch["panel_instance_seg"][B][contour_idx]
+            batch["n_pcs"][B][panel_idx] += num
+
+    # 重新计算 num_parts、part_valids、piece_id、panel_instance_seg
+    for B in range(B_size):
+        num_parts = batch["panel_instance_seg"][B][batch["num_parts"][B]-1]+1
+        n_pcs_cumsum = torch.cumsum(batch["n_pcs"][B][:num_parts], dim=-1)
+        batch["num_parts"][B] = num_parts
+        batch["part_valids"][B] = 0
+        batch["part_valids"][B][:num_parts]=1
+        batch["panel_instance_seg"][B] = -1
+        for i in range(len(n_pcs_cumsum)):
+            if i==0: st = 0
+            else: st = n_pcs_cumsum[i-1]
+            ed = n_pcs_cumsum[i]
+            batch["piece_id"][B][st:ed] = i
+            batch["panel_instance_seg"][B][i] = i
+
+    return batch

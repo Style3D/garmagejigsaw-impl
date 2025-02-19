@@ -199,8 +199,8 @@ class PointClassifier(MatchingBaseModel):
 
     def _loss_function(self, data_dict, out_dict={}, optimizer_idx=-1):
         pcs = data_dict["pcs"]
-        pcs_gt = data_dict["pcs_gt"]
-        B_size, N_point, _ = pcs_gt.shape
+        # pcs_gt = data_dict["pcs_gt"]
+        B_size, N_point, _ = pcs.shape
         n_stitch_pcs_sum = out_dict["n_stitch_pcs_sum"]
         part_valids = data_dict["part_valids"]
         n_pcs = data_dict["n_pcs"]

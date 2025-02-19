@@ -14,7 +14,7 @@ from .to_device import to_device
 from .loss import permutation_loss
 from .linear_solvers import Sinkhorn, hungarian
 from .lr import CosineAnnealingWarmupRestarts, LinearAnnealingWarmup
-from .utils import filter_wd_parameters, get_batch_length_from_part_points
+from .utils import *
 
 from .inference import *
 from .panel_optimize import *
