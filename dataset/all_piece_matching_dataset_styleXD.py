@@ -174,13 +174,13 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         noise_strength_M = random.random()*0.6 + 0.8
 
         pc_centroid = get_pc_bbox(pc)[0]
-        # SCALE ------------------------------
+        # SCALE
         pc = pc - pc_centroid[None]
 
         scale_gt = (np.random.rand(1) * self.scale_range) * noise_strength_S + 1
         pc = pc*scale_gt
 
-        # ROTATE ------------------------------
+        # ROTATE
         if self.rot_range >= 0.0:
             rot_euler = (np.random.rand(3) - 0.5) * 2.0 * self.rot_range
             rot_mat = R.from_euler("xyz", rot_euler, degrees=True).as_matrix()
@@ -192,7 +192,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         quat_gt = quat_gt[[3, 0, 1, 2]] * noise_strength_R
         pc = pc + pc_centroid[None]
 
-        # MOVE ------------------------------
+        # MOVE
         bkg_pcs = np.concatenate(pcs[:pc_idx]+pcs[pc_idx+1:])
         pc_centroid = get_pc_bbox(pc)[0]
         bkg_pcs_centroid = get_pc_bbox(bkg_pcs)[0]
@@ -373,10 +373,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         num_parts = len(nps)    # Panel 数量
         piece_id_global = np.concatenate([[idx]*i for idx,i in enumerate(nps)], axis=-1)    # 每个点顶点的 piece id
 
-
-
-        # PART 1 -------------------------------------------------------------------------------------------------------
-        # 获取 所有顶点、所有面(面中的index转全局index，因为一个衣服包含很多个mesh)、所有的边界点，分别保存在 vertices、faces、boundary_point_list 中
+        # PART 1 获取 所有顶点、所有面(面中的index转全局index，因为一个衣服包含很多个mesh)、所有的边界点，分别保存在 vertices、faces、boundary_point_list 中
 
         vertices = np.concatenate([np.array(mesh.vertices) for mesh in meshes], axis=0)     # 所有的 顶点
         faces = []      # 所有的 面
@@ -386,25 +383,23 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         for idx, mesh in enumerate(meshes):
             if idx ==0 : point_start_idx = 0
             else: point_start_idx = points_end_idxs[idx-1]
-            # === 获取边界点的全局index ===
+            # 获取边界点的全局index
             new_list = []  # 一个Panel可能包含多个contours
             for loop in igl.all_boundary_loop(mesh.faces):
                 new_list.extend(np.array(loop)+point_start_idx)
             boundary_point_list.append(new_list)
-            # === 获取面的全局index ===
+            # 获取面的全局index
             faces.append(np.array(mesh.faces)+point_start_idx)
         faces = np.concatenate(faces,axis=0)
         boundary_points_idx = np.concatenate(boundary_point_list,axis=0)
 
-        # PART 2 -------------------------------------------------------------------------------------------------------
-        # 按比例对具有缝合关系的点 和 不具有缝合关系的 边界点 进行采样
+        # PART 2 按比例对具有缝合关系的点 和 不具有缝合关系的 边界点 进行采样
 
-        # === 获取点点缝合关系的映射 ===
+        # 获取点点缝合关系的映射
         stitch_map = np.zeros(shape=(len(vertices)), dtype=np.int32) - 1
         stitch_map[stitches[:, 0]] = stitches[:, 1]
-        stitch_map[stitches[:, 1]] = stitches[:, 0] # [todo]
+        stitch_map[stitches[:, 1]] = stitches[:, 0]  # [todo]
 
-        # === 获取所有的两类点的idx ===
         # 所有具有缝合关系的点的index
         stitched_vertices_idx = np.concatenate([stitches[:, 0], stitches[:, 1]], axis=0) # [todo]
         # stitched_vertices_idx = stitches[:, 0]
@@ -412,17 +407,15 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         unstitched_vertices_idx = boundary_points_idx[
             np.array([s not in stitched_vertices_idx for s in boundary_points_idx])]
 
-        # === 分配 缝合点\不缝合点 的采样数量 ===
-        # 在具有缝合关系的点上进行采样的数量
+        # 分配 缝合点 的采样数量
         stitched_sample_num = int((num_points * (len(stitched_vertices_idx) / (len(stitched_vertices_idx) + len(unstitched_vertices_idx)))) / 2)
-        # 在不具有缝合关系的边界点上进行采样的数量
-        unstitched_sample_num = num_points - stitched_sample_num * 2
+        # unstitched_sample_num = num_points - stitched_sample_num * 2
 
-        # === 计算每个Panel的采样点数量期望值 ===
+        # 计算每个Panel的采样点数量期望值
         boundary_len = sum([len(b) for b in boundary_point_list])
         expect_sample_nums = np.array([int(num_points*len(b)/boundary_len) for b in boundary_point_list])
 
-        # === 对于期望值过低的Panel，我们提前分配一部分采样点 ===
+        # 对于期望值过低的Panel，我们提前分配一部分采样点
         sample_num_arrangement = np.zeros(num_parts, dtype=np.int16)
         """
         为什么用 int(min_samplenum_prepanel * 2) 作为单个Panel预设的最小采样点数量 ?
@@ -442,13 +435,13 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # 提前分配的采样点
         arranged_num = np.sum(sample_num_arrangement)
 
-        # === 获取每个 Panel 的采样点总数 ===
+        # 获取每个 Panel 的采样点总数
         sample_num_arrangement = np.array([int((num_points-arranged_num)*len(b)/boundary_len) for b in boundary_point_list]) + sample_num_arrangement
         # 分配没分完的采样点
         for i in range(num_points - np.sum(sample_num_arrangement)):
             sample_num_arrangement[random.randint(0, num_parts - 1)]+=1
 
-        # === 获取每个panel上的 缝合点 和 被缝合点 的数量 ===
+        # 获取每个panel上的 缝合点 和 被缝合点 的数量
         panel_stitched_num = [sum(piece_id_global[stitched_vertices_idx]==i) for i in range(num_parts)]
         panel_unstitched_num = [sum(piece_id_global[unstitched_vertices_idx]==i) for i in range(num_parts)]
         # 每个Panel上分配的 缝合点 的采样数量
@@ -456,7 +449,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         # 每个Panel上分配的 不缝合点 的采样数量
         sample_num_arrangement_unstitched = np.array([sample_num_arrangement[i]-sample_num_arrangement_stitched[i]*2 for i in range(num_parts)])
 
-        # === 获取每个Panel上的 缝合点 和 不缝合点===
+        # 获取每个Panel上的 缝合点 和 不缝合点
         stitched_list, unstitched_list = [], []
         for part_idx in range(num_parts):
             mask = piece_id_global[stitched_vertices_idx] == part_idx
@@ -464,7 +457,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             mask = piece_id_global[unstitched_vertices_idx] == part_idx
             unstitched_list.append(unstitched_vertices_idx[mask])
 
-        # === 修正 每个Panel上的 缝合点\不缝合点 的分配 ===
+        # 修正每个Panel上的 缝合点\不缝合点 的分配
         unarranged = 0  # 多余未分配的点数量，在不缝合点转移到缝合点，且不缝合点数量为奇数时，会产生一个offset
         # 没有不缝合点的panel，将分配的不缝合点数转移到缝合点
         for i in range(num_parts):
@@ -492,8 +485,7 @@ class AllPieceMatchingDataset_stylexd(Dataset):
             sample_num_arrangement_unstitched[min_idx]+=unarranged
             unaranged = 0
 
-        # PART 3 -------------------------------------------------------------------------------------------------------
-        # 根据上一部分计算的 采样点数量分配，来进行采样。可进行多轮采样
+        # PART 3 根据上一部分计算的 采样点数量分配，来进行采样。可进行多轮采样
         for check_time in range(max_check_times):
             # === 成对采样具有缝合关系的点 ===
             sample_list = []
@@ -505,7 +497,6 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                 # [todo] 可以迭代式地，让采样的分布更均匀
                 if sample_num_arrangement_stitched[part_idx]>0:
                     # sample_result = LatinHypercubeSample(len(part_points), sample_num_arrangement_stitched[part_idx])
-                    # [todo] 测试新的采样方式
                     sample_result = balancedSample(len(part_points), sample_num_arrangement_stitched[part_idx], iteration=20)
                     sample_list.append(part_points[sample_result])
             stitched_sample_idx = np.concatenate(sample_list)
@@ -521,7 +512,6 @@ class AllPieceMatchingDataset_stylexd(Dataset):
                 # [todo] 可以迭代式地，让采样的分布更均匀
                 if sample_num_arrangement_unstitched[part_idx]>0:
                     # sample_result = LatinHypercubeSample(len(part_points), sample_num_arrangement_unstitched[part_idx])
-                    # [todo] 测试新的采样方式
                     sample_result = balancedSample(len(part_points), sample_num_arrangement_unstitched[part_idx], iteration=20)
                     sample_list.append(part_points[sample_result])
 
@@ -557,43 +547,18 @@ class AllPieceMatchingDataset_stylexd(Dataset):
         piece_id = np.concatenate([np.array([idx]*n) for idx, n in enumerate(nps)],axis=0)[all_sample_idx]
         # stitch_visualize(np.concatenate([stitched_sample,stitched_sample_cor,unstitched_sample],axis=0),mat_gt)
 
-        # PART 4 -------------------------------------------------------------------------------------------------------
-        # 对每个边界点，进行凸包集采样
-
-        # # === 获取每个采样点的相邻点集 (集合中包括自身)===
-        # # 获得点与点邻居关系的邻接矩阵
-        # adjacency_list = np.array(compute_adjacency_list(faces, len(vertices)), dtype=object)
-        # # 获取每个采样点的邻居顶点的index的集合
-        # all_sample_neighbor_idx = adjacency_list[all_sample_idx]
-        # # 将每个采样点本身也加入这个集合，这个集合对应的顶点可以构成一个凸包集
-        # all_sample_neighbor_idx = [np.array(n+[i]) for n,i in zip(all_sample_neighbor_idx, all_sample_idx)]
-        # all_sample_neighbor_points = [vertices[n] for n in all_sample_neighbor_idx]
-        # # 在每个凸包集内随机采样一个顶点
-        # sampled_points_CH = np.array([random_point_in_convex_hull(elem) for elem in all_sample_neighbor_points])
-        # # pointcloud_visualize([sampled_points_CH[0:stitched_sample_num*2],sampled_points_CH[stitched_sample_num*2:]])
-        #
-        # # === 对采样结果进行扩张 ===
-        # all_sample_points = vertices[all_sample_idx]
-        # V_P = sampled_points_CH - all_sample_points
-        # sampled_points_CH = all_sample_points + n_rings * V_P * self.pcs_noise_strength
-        # # pointcloud_visualize([sampled_points_CH[0:stitched_sample_num*2],sampled_points_CH[stitched_sample_num*2:]])
-        # # pointcloud_and_stitch_visualize(sampled_points_CH,mat_gt[:100])
-
-        # [todo] 上面注释的代码可能真的没啥用，记得清理下
         sampled_points_CH =  vertices[all_sample_idx]
 
-        # PART 5 -------------------------------------------------------------------------------------------------------
-        # 将点云大小按最BBOX的最长边归一化到[-0.5 - 0.5]，计算平均边长
+        # PART 4 将点云大小按最BBOX的最长边归一化到[-0.5 - 0.5]，计算平均边长
 
         # points_normalized, normalize_range = min_max_normalize(sampled_points_CH)
         points_normalized, normalize_range = styleXD_normalize(sampled_points_CH)
         mean_edge_len = cal_mean_edge_len(meshes)/normalize_range
         # pointcloud_visualize(points_normalized)
 
-        # PART 6 -------------------------------------------------------------------------------------------------------
-        # 让采样的缝合关系满足：在index上接近的缝合关系，在位置上也尽可能接近
+        # PART 5 让采样的缝合关系满足：在index上接近的缝合关系，在位置上也尽可能接近
 
-        # === 将采样点按index进行排序 ===，这样同一个part的会凑到一块去
+        # 将采样点按index进行排序，这样同一个part的会凑到一块去
         sorted_indices = np.argsort(all_sample_idx)  # 创建排序索引
         points_normalized = points_normalized[sorted_indices]
         piece_id = piece_id[sorted_indices]
@@ -898,47 +863,6 @@ class AllPieceMatchingDataset_stylexd(Dataset):
 
         # pointcloud_visualize(np.concatenate(pcs), colormap="tab10", colornum=2)
         num_parts = len(pcs)
-
-        # # 在位置变化前，先加一次很小的缝合噪声 ---------------------------------------------------------------------------
-        # if self.use_stitch_noise:
-        #     # pointcloud_visualize(pcs)
-        #     # pointcloud_visualize([pcs[piece_id==i] for i in range(len(pcs))])
-        #     # pointcloud_and_stitch_visualize(pcs, mat_gt)
-        #
-        #     # stitch_noise_strength=1 在训练数据上inference结果更好
-        #     # stitch_noise_strength=2 在董远数据上inference结果更好
-        #
-        #     # === 对缝合点 按缝合线加远离噪声 ===
-        #     all_pcs = np.concatenate(pcs)
-        #     # 随机噪声强度
-        #     rand_param = random.random()
-        #     stitch_noise_strength_base = 0.05 * rand_param + 0.1 * (1 - rand_param)
-        #     stitch_noise_strength_base *= self.stitch_noise_strength
-        #
-        #     # mat_gt的shape=Nx2，保存的是每一对缝合点的index
-        #     vec = all_pcs[mat_gt[:, 1]] - all_pcs[mat_gt[:, 0]]
-        #     # vec 是每一对缝合点之间的向量
-        #     vec = vec / (np.linalg.norm(vec, axis=1, keepdims=True) + 1e-6)
-        #     # 在缝合的两边加的噪声
-        #     noise1 = (vec * np.random.rand(len(mat_gt), 1) * 0.7 + 0.3) * stitch_noise_strength_base * mean_edge_len * 1.2
-        #     noise2 = (vec * np.random.rand(len(mat_gt), 1) * 0.7 + 0.3) * stitch_noise_strength_base * mean_edge_len * 1.2
-        #     # cur_pcs的shape为Mx3，是所有点的位置
-        #     all_pcs[mat_gt[:, 1]] += noise1
-        #     all_pcs[mat_gt[:, 0]] -= noise2
-        #
-        #     nps_cumsum = np.cumsum(nps)
-        #     for idx in range(len(pcs)):
-        #         if idx == 0:
-        #             point_start_idx = 0
-        #         else:
-        #             point_start_idx = nps_cumsum[idx - 1]
-        #         point_end_idx = nps_cumsum[idx]
-        #         pcs[idx] = all_pcs[point_start_idx:point_end_idx]
-        #
-        # # pointcloud_visualize(all_pcs)
-        # # pointcloud_visualize([all_pcs[piece_id==i] for i in range(len(all_pcs))])
-        # # pointcloud_and_stitch_visualize(all_pcs, mat_gt)
-
 
         cur_pcs, cur_pcs_gt = [], []
         # cur_quat, cur_trans = [], []

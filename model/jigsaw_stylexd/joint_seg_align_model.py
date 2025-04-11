@@ -199,7 +199,7 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
 
     def forward(self, data_dict):
         out_dict = dict()
-        # 根据 panel_instance_seg，将contours合并为panels
+        # 根据 panel_instance_seg，将contours合并为panels(为了更有效的提取panel内部的环的特征)
         data_dict = merge_c2p_byPanelIns(deepcopy(data_dict))
 
         pcs = data_dict.get("pcs", None)  # [B_size, N_point, 3]
@@ -223,13 +223,12 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
         batch_length = get_batch_length_from_part_points(n_pcs, n_valids=n_valid).to(self.device)
         # === 用PointNet从点云或UV中提取特征，并拼接 ===
         features = []
-        # [todo] 根据panel_instance_seg将属于同一个panel的点云（在 n_pcs 中）进行合并
         if self.use_point_feature:
             if self.use_local_point_feature:
                 local_pcs_feats  = self._extract_pointcloud_feats(pcs, batch_length)
                 features.append(local_pcs_feats)
             if self.use_global_point_feature:
-                pcs_feats_global = self._extract_pointcloud_feats(pcs, torch.tensor([N_point]*B_size))
+                pcs_feats_global = self._extract_pointcloud_feats(pcs, torch.tensor([N_point] * B_size))
                 features.append(pcs_feats_global)
         if self.use_uv_feature:
             if self.use_local_uv_feature:
@@ -399,8 +398,6 @@ class JointSegmentationAlignmentModel(MatchingBaseModel):
                     "stitch_dis_loss": stitch_dis_loss,
                 }
             )
-            # [todo] stitch_dis_loss目前只能作为一种评估的方法，不能直接放入loss
-            # loss += stitch_dis_loss
 
         # calculate TP FP TN FN ACC TPR TNR ------------------------------------------------------------------------
         with torch.no_grad():

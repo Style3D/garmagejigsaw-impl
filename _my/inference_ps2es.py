@@ -35,8 +35,9 @@ if __name__ == "__main__":
 
     for batch in tqdm(inference_loader):
         batch = to_device(batch, model.device)
-
         inf_rst = model(batch)
+        if data_type == "Garmage256": data_id = int(batch['mesh_file_path'][0].split("_")[-1])
+        else: data_id=int(batch['data_id'])
 
         # 获取点点缝合关系 -------------------------------------------------------------------------------------------------
         if data_type == "Garmage64":
@@ -60,12 +61,12 @@ if __name__ == "__main__":
         elif data_type == "Garmage256":
             stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
-                                sym_choice="sym_max", mat_choice="col_max",
-                                filter_neighbor_stitch=True, filter_neighbor = 3,
+                                sym_choice="", mat_choice="hun",
+                                filter_neighbor_stitch=True, filter_neighbor = 1,
                                 filter_too_long=True, filter_length=0.12,
-                                filter_too_small=True, filter_logits=0.12,
+                                filter_too_small=True, filter_logits=0.15,
                                 only_triu=True, filter_uncontinue=False,
-                                show_pc_cls=False, show_stitch=False, export_vis_result = False))
+                                show_pc_cls=False, show_stitch=False, export_vis_result = True, data_id=data_id, vid_len=1))
         elif data_type == "brep_reso_128":
             stitch_mat_full, stitch_indices_full, logits = (
                 get_pointstitch(batch, inf_rst,
@@ -74,16 +75,17 @@ if __name__ == "__main__":
                                 filter_too_long=True, filter_length=0.1,
                                 filter_too_small=True, filter_logits=0.2,
                                 only_triu=True, filter_uncontinue=False,
-                                show_pc_cls=False, show_stitch=True, export_vis_result = False))
+                                show_pc_cls=False, show_stitch=False, export_vis_result = False))
 
         # # 优化缝合关系【OPTIONAL】[有问题，而且不是很必要。。。]
         # optimized_stitch_indices = optimize_pointstitch(batch, inf_rst, stitch_mat_full, stitch_indices_full, show_stitch = True)
 
         # 从点点缝合关系获取边边缝合关系 -------------------------------------------------------------------------------------
         edgestitch_results = pointstitch_2_edgestitch2(batch, inf_rst,
-                                                stitch_mat_full, stitch_indices_full,
-                                                unstitch_thresh=5, fliter_len=2,
-                                                param_dis_optimize_thresh=0.9)
+                                                       stitch_mat_full, stitch_indices_full,
+                                                       unstitch_thresh=5, fliter_len=2,
+                                                       optimize_thresh_neighbor_index_dis=12,
+                                                       optimize_thresh_side_index_dis=3)
         garment_json = edgestitch_results["garment_json"]
 
         # 保存可视化结果 ---------------------------------------------------------------------------------------------------
@@ -95,9 +97,6 @@ if __name__ == "__main__":
         data_dir_list = cfg["DATA"]["DATA_TYPES"]["INFERENCE"]
         data_dir = "+".join(data_dir_list)
         save_dir  = os.path.join(save_dir, data_dir)
-        if data_type == "Garmage256": data_id = int(batch['mesh_file_path'][0].split("_")[-1])
-        else: data_id=int(batch['data_id'])
         save_result(save_dir, data_id=data_id, garment_json=garment_json, fig=fig_comp)
         # input("Press ENTER to continue")
-
         torch.cuda.empty_cache()

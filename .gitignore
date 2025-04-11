@@ -180,3 +180,8 @@ cython_debug/
 /_my/another_script/ckpt_transfer/data/
 /_tmp/garment_json_output/
 /_tmp/mesh_split/
+/_tmp/StyleXD_Preprocess/
+/_tmp/mesh_split/
+/_tmp/
+/_my/another_script/results/
+/_my/another_script/ckpt_transfer/results/

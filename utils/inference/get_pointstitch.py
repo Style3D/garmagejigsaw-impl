@@ -1,8 +1,9 @@
 # 获取点点缝合关系
+import os
 
 import torch
 import numpy as np
-from utils import (pointcloud_visualize, pointcloud_and_stitch_visualize, pointcloud_and_stitch_logits_visualize,
+from utils import (pointcloud_visualize, pointcloud_and_stitch_visualize, pointcloud_and_stitch_logits_visualize, pointcloud_and_edge_visualize,
                    hungarian, stitch_mat2indices, stitch_indices2mat, get_export_config)
 
 def get_pointstitch(batch, inf_rst,
@@ -12,7 +13,7 @@ def get_pointstitch(batch, inf_rst,
                     filter_too_small = True, filter_logits = 0.2,
                     only_triu = False, filter_uncontinue = False,
                     show_pc_cls = False, show_stitch = False,
-                    export_vis_result = False):
+                    export_vis_result = True, data_id=None, vid_len=120):
     """
     :param batch:           # garment_jigsaw model input
     :param inf_rst:         # garment_jigsaw model output
@@ -121,9 +122,6 @@ def get_pointstitch(batch, inf_rst,
         pc_stitch_threshold = filter_logits
     else:
         pc_stitch_threshold = 0
-
-
-    # 过滤掉概率太小的缝合关系 =========================
     # [modified] logits_ = torch.sum(stitch_mat_pred * stitch_mat, dim=-1)  # 缝合置信度
     logits_ = stitch_mat_pred[stitch_mat == 1]  # 缝合置信度
     pc_stitch_mask = logits_ < pc_stitch_threshold
@@ -177,22 +175,51 @@ def get_pointstitch(batch, inf_rst,
 
     # export data
     if export_vis_result:
-        pass
         # 按panel的点的旋转视频
-        # num_parts = batch["num_parts"].item()
-        # piece_id = batch["piece_id"].squeeze(0).detach().cpu().numpy()
-        # part_masks = [piece_id == part_idx for part_idx in range(num_parts)]
-        # pcs_parts = [pcs[msk] for msk in part_masks]
-        # pointcloud_visualize(pcs_parts,
-        #                      export_data_config=get_export_config("_tmp/point_cloud_vls", pic_num=120))
+        num_parts = batch["num_parts"].item()
+        piece_id = batch["piece_id"].squeeze(0).detach().cpu().numpy()
+        part_masks = [piece_id == part_idx for part_idx in range(num_parts)]
+        pcs_parts = [pcs[msk] for msk in part_masks]
+
+        pointcloud_visualize(pcs_parts, colormap='coolwarm', colornum=len(pcs_parts), color_norm= [0, len(pcs_parts)],
+                             export_data_config=get_export_config(os.path.join("_tmp/point_cloud_vis",f"{data_id}".zfill(5)), pic_num=vid_len))
         # 点分类的旋转视频
-        # pointcloud_visualize([stitch_pcs, unstitch_pcs],colormap='bwr', colornum=2,color_norm=[0,1],
-        #                      export_data_config=get_export_config("_tmp/point_cloud_cls_vls", pic_num=120))
+        pointcloud_visualize([stitch_pcs, unstitch_pcs], colormap='bwr', colornum=2,color_norm=[0,1],
+                             export_data_config=get_export_config(os.path.join("_tmp/point_cloud_cls_vis",f"{data_id}".zfill(5)), pic_num=vid_len))
         # 缝合的旋转视频
-        # pointcloud_and_stitch_logits_visualize(pcs,
-        #                     stitch_indices_full.detach().cpu().numpy(), logits,
-        #                     title=f"predict pcs classify",
-        #                     export_data_config=get_export_config("_tmp/PC_and_stitch_vis", pic_num=120))
+        pointcloud_and_stitch_logits_visualize([stitch_pcs, unstitch_pcs],
+                            stitch_indices, logits, colormap='bwr', colornum=2,color_norm=[0,1],
+                            title=f"predict pcs classify",
+                            export_data_config=get_export_config(os.path.join("_tmp/PC_and_stitch_vis",f"{data_id}".zfill(5)), pic_num=vid_len))
+
+
+        import json
+        with open(batch['annotations_json_path'][0], "r", encoding="utf-8") as f:
+            ann = json.load(f)
+            edge_approx = ann["edge_approx"]
+            contour_nes = ann['contour_nes']
+        n_pcs = batch["n_pcs"][0]
+
+        vertices_list = []
+        edge_list = []
+        n_pcs_cumsum = torch.cumsum(n_pcs[:num_parts], dim=-1)
+        contour_nes_cumsum = torch.cumsum(torch.Tensor(contour_nes), dim=-1, dtype=torch.int64)
+        for contour_idx in range(num_parts):
+            if contour_idx==0:
+                pcs_start = 0
+                edge_start = 0
+            else:
+                pcs_start = n_pcs_cumsum[contour_idx-1]
+                edge_start = contour_nes_cumsum[contour_idx-1]
+            pcs_end = n_pcs_cumsum[contour_idx]
+            edge_end = contour_nes_cumsum[contour_idx]
+            vertices_list.append(pcs[pcs_start:pcs_end])
+            edge_list.append(edge_approx[edge_start:edge_end])
+
+        pointcloud_and_edge_visualize(vertices_list, edge_list, contour_nes,
+                                       title=f"",
+                                       export_data_config=get_export_config(os.path.join("_tmp/PC_and_approx_vis", f"{data_id}".zfill(5)), pic_num=vid_len))
+
 
     stitch_mat_full.to(pcs.device)
     stitch_indices_full = torch.tensor(stitch_indices_full, device=pcs.device, dtype=torch.int64)
