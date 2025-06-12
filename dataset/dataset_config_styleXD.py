@@ -76,3 +76,6 @@ __C.STYLEXD.OVERFIT = -1
 
 # 点分类预测中的阈值
 __C.STYLEXD.PC_CLS_THRESHOLD = 0.8
+
+# 使用的datalist的名称(位于DATA_DIR下方的文件夹名称)
+__C.STYLEXD.DATASET_SPLIT_DIR = "data/stylexd_jigsaw/dataset_split"
