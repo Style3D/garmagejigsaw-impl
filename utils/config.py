@@ -75,6 +75,9 @@ __C.TRAIN.VAL_SAMPLE_VIS = 5
 # Loss function.
 __C.TRAIN.LOSS = ""
 
+# 是否finetune
+__C.TRAIN.FINETUNE = False
+
 
 """
 WandB

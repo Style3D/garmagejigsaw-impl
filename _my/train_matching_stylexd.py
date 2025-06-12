@@ -1,4 +1,5 @@
 import os
+import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
@@ -67,9 +68,15 @@ def train_model(cfg):
     trainer = pl.Trainer(**trainer_dict)
     train_loader, val_loader = build_stylexd_dataloader_train_val(cfg)
 
-    print("Start training")
-    trainer.fit(model, train_loader, val_loader, ckpt_path=ckp_path)
-    print("Done training")
+    if not cfg.TRAIN.FINETUNE:
+        print("Start training")
+        trainer.fit(model, train_loader, val_loader, ckpt_path=ckp_path)
+        print("Done training")
+    else:
+        model.load_state_dict(torch.load(ckp_path)['state_dict'])
+        print("Start finetuning")
+        trainer.fit(model, train_loader, val_loader)
+        print("Done finetuning")
 
 
 if __name__ == "__main__":
