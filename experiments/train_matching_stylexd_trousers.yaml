@@ -6,23 +6,23 @@ PROJECT: jigsaw
 
 DATASET: stylexd.all_piece_matching
 
-# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
+#WEIGHT_FILE: pretrained/Classpred+stitchpred/PCglobal+PClocal+UV_tfB3_sn1/model_epoch=099.ckpt
 
 RESUME: false
 WANDB:
-  ID: gammtewg
+  ID: ivjf8z54
 
-GPUS: [0, 1]
-BATCH_SIZE: 12
-NUM_WORKERS: 12
+GPUS: [0]
+BATCH_SIZE: 2
+NUM_WORKERS: 4
 
 TRAIN:
-  NUM_EPOCHS: 100
+  NUM_EPOCHS: 50
   LR: 0.001
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
   LR_SCHEDULER: 'cosine' # [notice] 恢复训练时不开这个
-  LR_DECAY: 50.
+  LR_DECAY: 100.
   VAL_EVERY: 1
 
 MODEL:
@@ -37,21 +37,22 @@ MODEL:
   USE_TF_BLOCK: True  # 是否将每一层 PointTransformer Layer 分别封装成一个包含残差效果的 Block
   IS_TRAIN_IN_STAGE: False  # 是否分阶段训练
   TRAIN_IN_STAGE:
-    W_CLS: 0.08
-    VAL_ACC: 95
+    W_CLS: 0.12
+    VAL_ACC: 0.8
   PC_CLS_THRESHOLD: 0.5
   LOSS:
     MAT_LOSS_TYPE: "global"  # "local" OR "global"
     w_cls_loss: 1.0
-    w_mat_loss: 0.1
+    w_mat_loss: 0.008
 
 CALLBACK:
   CHECKPOINT_MONITOR: val/mat_f1
   CHECKPOINT_MODE: max
 
 DATA:
-  DATA_DIR: "/home/data/StyleXD/preprocessed_jigsaw"
-  DATASET_SPLIT_DIR: "/home/data/StyleXD/preprocessed_jigsaw/dataset_split"
+  DATA_DIR: "data/stylexd_jigsaw"
+  DATASET_SPLIT_DIR: "data/stylexd_jigsaw/dataset_split_trousers"
+
   DATA_TYPES:
     INFERENCE: ["Garmage256_SL"]
 
@@ -79,8 +80,8 @@ DATA:
   PCS_NOISE_TYPE: default  # default  normal
   PCS_NOISE_STRENGTH: 0.0
   USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
-  STITCH_NOISE_STRENGTH: 12.
-  STITCH_NOISE_RANDOM_RANGE: [-1., 1.]
+  STITCH_NOISE_STRENGTH: 4.
+  STITCH_NOISE_RANDOM_RANGE: [-0.2, 0.2]
 
   PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
     TRAIN: bbox
@@ -88,8 +89,8 @@ DATA:
     INFERENCE: default  # default OR bbox
   SCALE_RANGE: 0.07
   ROT_RANGE: 3
-  TRANS_RANGE: 5
-  BBOX_NOISE_STRENGTH: 8
+  TRANS_RANGE: 6
+  BBOX_NOISE_STRENGTH: 2
 
 # STATS is for eval
 STATS: "./results/jigsaw_4x4_128_512_250e_cosine_everyday/stats/eval"

@@ -88,12 +88,17 @@ if __name__ == "__main__":
     output_path = cfg.OUTPUT_PATH
     point_num = cfg.DATA.NUM_PC_POINTS
     model = build_model(cfg).load_from_checkpoint(cfg.WEIGHT_FILE)
+
+    cfg.DATA.SHUFFLE = True
     _, val_loader = build_stylexd_dataloader_train_val(cfg)
+
+
 
     metric_dict = {"PRECISION_CLS":[], "RECALL_CLS":[], "PRECISION_STITCH":[], "RECALL_STITCH":[], "STITCH_AMD":[],
                    "TOPOLOGHY_ACC_PS":[], "TOPOLOGHY_PRECISION_PS":[], "TOPOLOGHY_RECALL_PS":[], "TOPOLOGHY_F1_PS":[], "TOPOLOGHY_GED_PS":[],
                    "TOPOLOGHY_ACC_ES": [], "TOPOLOGHY_PRECISION_ES": [], "TOPOLOGHY_RECALL_ES": [], "TOPOLOGHY_F1_ES": [], "TOPOLOGHY_GED_ES": []}
 
+    processed_sum = 0
     for batch in val_loader:
         batch = to_device(batch, model.device)
 
@@ -127,14 +132,14 @@ if __name__ == "__main__":
 
 
         # 计算点缝合的metric ------------------------------------------------------------------------------------
-        stitch_mat_full, stitch_indices_full, logits = (
+        stitch_mat_full, _, _, _, stitch_indices_full, logits= (
             get_pointstitch(batch, inf_rst,
                             sym_choice="", mat_choice="hun",
                             filter_neighbor_stitch=False, filter_neighbor=3,
-                            filter_too_long=False, filter_length=0.08,
-                            filter_too_small=True, filter_logits=0.2,
+                            filter_too_long=False, filter_length=0.1,
+                            filter_too_small=True, filter_logits=0.1,
                             only_triu=False, filter_uncontinue=False,
-                            show_pc_cls=False, show_stitch=False, export_vis_result=False))
+                            show_pc_cls=False, show_stitch=False))
 
         mat_gt = mat_gt==1
         pcs = batch["pcs"].squeeze(0)
@@ -233,7 +238,7 @@ if __name__ == "__main__":
             "TOPOLOGHY_F1_ES": torch.mean(torch.Tensor(metric_dict['TOPOLOGHY_F1_ES'])).float().item(),
             "TOPOLOGHY_GED_ES": torch.mean(torch.Tensor(metric_dict['TOPOLOGHY_GED_ES'])).float().item(),
         }
-        with open(os.path.join("/home/Ex1/ProjectFiles/Pycharm_MyPaperWork/Jigsaw_matching/_tmp/metric", 'metric.json'), 'w') as f:
+        with open(os.path.join("/home/Ex1/ProjectFiles/Pycharm_MyPaperWork/Jigsaw_matching/_tmp/metric", 'metric_full.json'), 'w') as f:
             json.dump(out_dict, f, indent=2)
 
         print(f"\nPRECISION_CLS: {out_dict['PRECISION_CLS']}\n"
@@ -251,4 +256,8 @@ if __name__ == "__main__":
               f"TOPOLOGHY_F1_ES: {out_dict['TOPOLOGHY_F1_ES']}\n"
               f"TOPOLOGHY_GED_ES: {out_dict['TOPOLOGHY_GED_ES']}\n"
               )
+        processed_sum+=1
+        print(f"processed_sum:{processed_sum}")
         torch.cuda.empty_cache()
+        if processed_sum == 100:
+            break

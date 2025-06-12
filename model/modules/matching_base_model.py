@@ -148,7 +148,7 @@ class MatchingBaseModel(pytorch_lightning.LightningModule):
         else:
             optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.)
 
-        if self.cfg.TRAIN.LR_SCHEDULER:
+        if len(self.cfg.TRAIN.LR_SCHEDULER)>0 and self.cfg.TRAIN.LR_SCHEDULER:
             assert self.cfg.TRAIN.LR_SCHEDULER.lower() in ['cosine']
             total_epochs = self.cfg.TRAIN.NUM_EPOCHS
             warmup_epochs = int(total_epochs * self.cfg.TRAIN.WARMUP_RATIO)

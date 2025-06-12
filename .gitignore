@@ -185,3 +185,4 @@ cython_debug/
 /_tmp/
 /_my/another_script/results/
 /_my/another_script/ckpt_transfer/results/
+/_my/only_export_vis_rotate/output/

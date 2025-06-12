@@ -6,24 +6,25 @@ PROJECT: jigsaw
 
 DATASET: stylexd.all_piece_matching
 
-# WEIGHT_FILE: results/jigsaw_StyleXD/model_save/last.ckpt
+WEIGHT_FILE: pretrained/Classpred+stitchpred/PClocal+UV_local_tfB3_sn12_globalSL_STloss0.1/model_epoch=099.ckpt
 
 RESUME: false
-WANDB:
-  ID: gammtewg
+#WANDB:
+#  ID: gammtewg
 
-GPUS: [0, 1]
-BATCH_SIZE: 12
-NUM_WORKERS: 12
+GPUS: [0]
+BATCH_SIZE: 2
+NUM_WORKERS: 4
 
 TRAIN:
   NUM_EPOCHS: 100
-  LR: 0.001
+  LR: 0.00002
   WEIGHT_DECAY: 0.
   WARMUP_RATIO: 0.
-  LR_SCHEDULER: 'cosine' # [notice] 恢复训练时不开这个
+  LR_SCHEDULER: '' # [notice] 恢复训练时不开这个
   LR_DECAY: 50.
   VAL_EVERY: 1
+  FINETUNE: True
 
 MODEL:
   USE_POINT_FEATURE: True   # 是否提取点特征
@@ -50,12 +51,12 @@ CALLBACK:
   CHECKPOINT_MODE: max
 
 DATA:
-  DATA_DIR: "/home/data/StyleXD/preprocessed_jigsaw"
-  DATASET_SPLIT_DIR: "/home/data/StyleXD/preprocessed_jigsaw/dataset_split"
+  DATA_DIR: "data/stylexd_jigsaw"
+  DATASET_SPLIT_DIR: "data/stylexd_jigsaw/dataset_split_Q4finetune"
   DATA_TYPES:
     INFERENCE: ["Garmage256_SL"]
 
-  NUM_PC_POINTS: 1500
+  NUM_PC_POINTS: 2500
 
   SHUFFLE: True  # 打乱dataset
 
@@ -79,8 +80,8 @@ DATA:
   PCS_NOISE_TYPE: default  # default  normal
   PCS_NOISE_STRENGTH: 0.0
   USE_STITCH_NOISE: True  # 是否沿着缝合线加噪（仅训练）
-  STITCH_NOISE_STRENGTH: 12.
-  STITCH_NOISE_RANDOM_RANGE: [-1., 1.]
+  STITCH_NOISE_STRENGTH: 3.
+  STITCH_NOISE_RANDOM_RANGE: [-1.0, 0.2]  # [-1., 1.]
 
   PANEL_NOISE_TYPE:  # 在Panel上加噪声的类型
     TRAIN: bbox
@@ -89,7 +90,7 @@ DATA:
   SCALE_RANGE: 0.07
   ROT_RANGE: 3
   TRANS_RANGE: 5
-  BBOX_NOISE_STRENGTH: 8
+  BBOX_NOISE_STRENGTH: 2
 
 # STATS is for eval
 STATS: "./results/jigsaw_4x4_128_512_250e_cosine_everyday/stats/eval"
