@@ -1,7 +1,7 @@
 MODEL_NAME: jigsaw_StyleXD  # wandb run name
 MODULE: jigsaw_stylexd  # model build
 
-PROJECT: jigsaw  # wandb project name
+PROJECT: GarmageJigsaw  # wandb project name
 
 WEIGHT_FILE: pretrained/train_on_Q4_feature_conv/PClocal+UVlocal_FconvK55D11_tfB3_sn12_bn4_globalSL_STloss0.1_Sample2500/model_save/model_epoch=159.ckpt
 
