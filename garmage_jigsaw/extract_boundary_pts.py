@@ -14,16 +14,162 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-from utils import (pointcloud_visualize, draw_per_panel_geo_imgs, draw_bbox_geometry)
-
+from utils import (pointcloud_visualize, draw_per_panel_geo_imgs)
+from utils.visualization.draw_bbox_geometry import _create_bounding_box_lines, _create_bounding_box_mesh
 import plotly.graph_objects as go
+
+
+def draw_bbox_geometry(
+    bboxes,
+    bbox_colors,
+    points=None,
+    point_masks=None,
+    point_colors=None,
+    num_point_samples=1000,
+    show_bbox=True,
+    show_num=False,
+    all_bboxes=None,
+    export_data_config=None,
+    output_fp = None,
+    visatt_dict={}
+):
+    annotations = []
+
+    fig = go.Figure()
+
+    for idx in range(len(bboxes)):
+        # visuzlize point clouds if given
+        if points is not None:
+            cur_points, cur_points_mask = points[idx].reshape(-1, 3), point_masks[idx].reshape(-1)
+            cur_points = cur_points[cur_points_mask, :]
+            if cur_points.shape[0] > num_point_samples:
+                rand_idx = np.random.choice(cur_points.shape[0], num_point_samples, replace=False)
+
+                # rand_idx = np.linspace(0, cur_points.shape[0] - 1, num_point_samples, dtype=int)
+
+                cur_points = cur_points[rand_idx, :]
+            fig.add_trace(go.Scatter3d(
+                x=cur_points[:, 0],
+                y=cur_points[:, 1],
+                z=cur_points[:, 2],
+                mode='markers',
+                marker=dict(size=2, color=point_colors[idx]),
+                name=f'Point Cloud {idx+1}'
+            ))
+
+        # Add the bounding box lines
+        min_point, max_point = bboxes[idx, :3], bboxes[idx, 3:]
+        bbox_lines = _create_bounding_box_lines(min_point, max_point, color=bbox_colors[idx])
+        fig.add_trace(bbox_lines)
+        # Add the bounding box surfaces with transparency
+        bbox_mesh = _create_bounding_box_mesh(min_point, max_point, color=bbox_colors[idx], opacity=0.05)
+        fig.add_trace(bbox_mesh)
+
+    if show_bbox:
+        for idx in range(len(bboxes)):
+            # Add the bounding box lines
+            min_point, max_point = bboxes[idx, :3], bboxes[idx, 3:]
+            bbox_lines = _create_bounding_box_lines(min_point, max_point, color=bbox_colors[idx])
+            fig.add_trace(bbox_lines)
+            # Add the bounding box surfaces with transparency
+            bbox_mesh = _create_bounding_box_mesh(min_point, max_point, color=bbox_colors[idx],
+                                                  opacity=visatt_dict.get("bboxmesh_opacity", 0.2))
+            fig.add_trace(bbox_mesh)
+
+            if show_num:
+                # Add annotation (always on top)
+                center = (min_point + max_point) / 2
+                annotations.append(dict(
+                    showarrow=False,
+                    x=center[0],
+                    y=center[1],
+                    z=center[2],
+                    text=f'<b>{idx}</b>',
+                    font=dict(color='black', size=14),
+                    xanchor='left',
+                    yanchor='bottom',
+                    bgcolor='rgba(255,255,255,0.7)',  # Optional: white semi-transparent background
+                    bordercolor='black',
+                    borderwidth=1,
+                    opacity=1
+                ))
+
+    camera = dict(
+        up=dict(x=0, y=1, z=0),
+        center=dict(x=0, y=0, z=0),
+        eye=dict(x=0, y=0, z=visatt_dict.get("camera_eye_z", 1.2))
+    )
+
+    if all_bboxes is None:
+        all_mins = np.min(bboxes[:, :3], axis=0)
+        all_maxs = np.max(bboxes[:, 3:], axis=0)
+    else:
+        all_mins = np.min(all_bboxes[:, :3], axis=0)
+        all_maxs = np.max(all_bboxes[:, 3:], axis=0)
+    center = (all_mins + all_maxs) / 2
+    range_scale = visatt_dict.get("range_scale", 1.1)
+    max_range = np.max(all_maxs - all_mins) / range_scale
+    x_range = [center[0] - max_range, center[0] + max_range]
+    y_range = [center[1] - max_range, center[1] + max_range]
+    z_range = [center[2] - max_range, center[2] + max_range]
+
+    # Update layout
+    fig.update_layout(
+        scene=dict(
+            annotations=annotations,
+            camera=camera,
+            xaxis=dict(
+                visible=False,
+                showbackground=False,
+                showgrid=False,
+                showline=False,
+                showticklabels=False,
+                title='',
+                range=x_range
+            ),
+            yaxis=dict(
+                visible=False,
+                showbackground=False,
+                showgrid=False,
+                showline=False,
+                showticklabels=False,
+                title='',
+                range=y_range
+            ),
+            zaxis=dict(
+                visible=False,
+                showbackground=False,
+                showgrid=False,
+                showline=False,
+                showticklabels=False,
+                title='',
+                range=z_range
+            ),
+            aspectmode='cube',
+        ),
+        width=800,
+        height=800,
+        margin=dict(r=0.1, l=0.1, b=0.1, t=0.1),
+        showlegend=False,
+        title=dict(text="", automargin=True),
+        scene_camera=camera,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+    )
+
+    if export_data_config is None and output_fp is None:
+        fig.show("browser")
+
+    if output_fp is not None and export_data_config is None:
+        fig.write_image(output_fp, width=1080, height=1080, scale=2)
+
 
 
 def pointcloud_condition_visualize(vertices: np.ndarray, output_fp=None):
     assert vertices.ndim == 2 and vertices.shape[1] == 3, "vertices 应为 (N, 3) 的 numpy 数组"
 
     x, y, z = vertices[:, 0], vertices[:, 1], vertices[:, 2]
-    color = "#717388"  # 用 z 来着色
+    color = "#717388"
     xrange = x.max() - x.min()
     yrange = y.max() - y.min()
     zrange = z.max() - z.min()
@@ -36,13 +182,12 @@ def pointcloud_condition_visualize(vertices: np.ndarray, output_fp=None):
                 color=color,
                 colorscale='Viridis',
                 opacity=1,
-                showscale=False  # 不显示 colorbar
+                showscale=False
             ),
-            showlegend=False  # 不显示图例
+            showlegend=False
         )
     ])
 
-    # 隐藏坐标轴、网格、背景等
     axis_style = dict(
         showbackground=False,
         showgrid=False,
@@ -50,7 +195,7 @@ def pointcloud_condition_visualize(vertices: np.ndarray, output_fp=None):
         showline=False,
         ticks='',
         showticklabels=False,
-        visible=False  # 最直接隐藏整个轴
+        visible=False
     )
     camera = dict(
         up=dict(x=0, y=1, z=0),
@@ -77,17 +222,14 @@ def pointcloud_condition_visualize(vertices: np.ndarray, output_fp=None):
     )
     RESO = 512
     if output_fp:
-        # fig.write_html(output_fp.replace(".pkl", "") + "_pcCond_vis.html")
-        fig.write_image(output_fp.replace(".pkl", "") + "_pcCond.png", width=RESO, height=RESO)
+        fig.write_image(output_fp.replace(".pkl", "_pcCond.png") , width=RESO, height=RESO)
 
 
 
-# 判断一个contour是不是净边
 def is_contour_OutLine(contour_idx, panel_instance_seg):
     return contour_idx == 0 or panel_instance_seg[contour_idx] != panel_instance_seg[contour_idx - 1]
 
 
-# 获取一段随机的 uuid
 def get_random_uuid():
     id = str(uuid.uuid4().hex)
     result = id[0:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:]
@@ -95,14 +237,10 @@ def get_random_uuid():
 
 
 def angle_between_vectors(vectors1, vectors2):
-    # 点积
     dot_product = np.sum(vectors1 * vectors2, axis=-1)
-    # 向量的模长
     norm_v1 = np.linalg.norm(vectors1, axis=-1)
     norm_v2 = np.linalg.norm(vectors2, axis=-1)
-    # 计算cos(θ)
-    cos_theta = dot_product / (norm_v1 * norm_v2 + 1e-8)  # [todo] 会报错 invalid value encountered in divide
-    # 反余弦，转换为度
+    cos_theta = dot_product / (norm_v1 * norm_v2 + 1e-8)
     angle_rad = np.arccos(np.clip(cos_theta, -1.0, 1.0))
     return np.degrees(angle_rad)
 
@@ -133,7 +271,6 @@ def load_data(data_type="Garmage256", fp={}, save_vis=False):
     :return:
     """
     if data_type == "Garmage256":
-
         with open(fp["garment_fp"], "rb") as f:
             data = pickle.load(f)
         geo_orig = data["surf_ncs"]
@@ -232,20 +369,15 @@ def resample_boundary(points, contour, corner_index, delta, c_idx, outlier_thres
     TEST = False
 
     if TEST:
-        # 假设 ndarrayA 和 ndarrayB 是已定义的 Mx2 和 Nx2 的 ndarray
-        A = contour[corner_index]  # 示例数据，Mx2
-        B = contour  # 示例数据，Nx2
+        A = contour[corner_index]
+        B = contour
 
-        # 创建一个图形
         plt.figure(figsize=(8, 6))
 
-        # 绘制 B 点集，使用蓝色
         plt.scatter(B[:, 0], B[:, 1], color='blue', label='Points B')
 
-        # 绘制 A 点集，使用红色
         plt.scatter(A[:, 0], A[:, 1], color='red', label='Points A')
 
-        # 添加图例
         plt.legend()
 
         # 设置标题和标签
@@ -324,22 +456,21 @@ def resample_boundary(points, contour, corner_index, delta, c_idx, outlier_thres
         resampled_points_2D[:, i] = np.interp(new_arc_lengths, arc_lengths, contour[:, i])
 
     if TEST:
-        # 假设 ndarrayA 和 ndarrayB 是已定义的 Mx2 和 Nx2 的 ndarray
-        A = resampled_points_2D[new_corner_index]  # 示例数据，Mx2
-        B = resampled_points_2D  # 示例数据，Nx2
-        # 创建一个图形
+        A = resampled_points_2D[new_corner_index]
+        B = resampled_points_2D
+
         plt.figure(figsize=(8, 6))
-        # 绘制 B 点集，使用蓝色
+
         plt.scatter(B[:, 0], B[:, 1], color='blue', label='Points B')
-        # 绘制 A 点集，使用红色
+
         plt.scatter(A[:, 0], A[:, 1], color='red', label='Points A')
-        # 添加图例
+
         plt.legend()
-        # 设置标题和标签
+
         plt.title('Scatter Plot of Points A and B')
         plt.xlabel('X')
         plt.ylabel('Y')
-        # 显示图形
+
         plt.show()
         input("Press Enter to continue...")
 
@@ -572,7 +703,57 @@ def get_boundary_corner(contour, resized_uv, corner_min_thresh=25, kernal_size_s
     return corner_index
 
 
-def get_boundary_corner_v2(contour, resized_uv, corner_min_thresh=25, kernal_size_shrink=0, show_2d_approx=False):
+def check_aspect_ratio_outlier(resized_uv: np.ndarray, threshold: float = 10.0) -> (bool, float):
+    """
+    计算轮廓点的边界框 (BBOX)，并判断其宽高比是否过于离谱（极度细长）。
+
+    :param resized_uv: Nx2 的 NumPy 数组，代表轮廓点 (X, Y)。
+    :param threshold: 宽高比的阈值。如果 W/H 或 H/W 超过此值，则认为离谱。
+                      例如，20.0 意味着比例超过 20:1。
+    :return: (is_outlier, aspect_ratio_max)
+             is_outlier (bool): 如果宽高比过于离谱，则为 True。
+             aspect_ratio_max (float): W/H 和 H/W 中较大的那个比值。
+    """
+    if resized_uv.ndim != 2 or resized_uv.shape[1] != 2:
+        raise ValueError("resized_uv 必须是 Nx2 的 NumPy 数组。")
+
+    # 确保轮廓至少有两个点，否则无法形成边界框
+    if len(resized_uv) < 2:
+        return False, 0.0
+
+    # 1. 计算 BBOX
+    x_min, y_min = np.min(resized_uv, axis=0)
+    x_max, y_max = np.max(resized_uv, axis=0)
+
+    # 2. 计算宽度和高度
+    width = x_max - x_min
+    height = y_max - y_min
+
+    # 为了避免除以零和处理极小值，使用一个小的 epsilon
+    epsilon = 1e-6
+
+    # 如果 W 和 H 都非常接近零（例如，所有点都重合），我们认为它不离谱，但也没有意义
+    if width < epsilon and height < epsilon:
+        return False, 1.0
+
+        # 3. 计算宽高比及其倒数
+    # 确保分母不会是零或极小值
+    width_robust = max(width, epsilon)
+    height_robust = max(height, epsilon)
+
+    # W/H 和 H/W 中取较大的作为判断依据
+    aspect_ratio_wh = width_robust / height_robust
+    aspect_ratio_hw = height_robust / width_robust
+
+    aspect_ratio_max = max(aspect_ratio_wh, aspect_ratio_hw)
+
+    # 4. 判断
+    is_outlier = aspect_ratio_max > threshold
+
+    return is_outlier, aspect_ratio_max
+
+
+def get_boundary_corner_v2(contour, resized_uv, corner_min_thresh=25, show_2d_approx=False):
     """
     BEST IS
     corner_min_thresh = 25
@@ -581,23 +762,24 @@ def get_boundary_corner_v2(contour, resized_uv, corner_min_thresh=25, kernal_siz
 
     # 检测角点的阈值
     # 检测角点的卷积核
-    kernal = np.array([-5, -4, -3, 0, 3, 4, 5])
+    kernal = np.array([-10, -6, 0, 6, 10])
 
-    if len(kernal)-kernal_size_shrink*2<3:
-        kernal_size_shrink=(len(kernal)-3)/2
     kernal_mid = np.where(kernal==0)[0][0]  # 卷积核的中心位置
 
     # === 获取每一个边缘点的 【平均本地角度】 ===
     # 每个点以及其卷积到的其它点的index [N x K]
     index_matrix = np.repeat(np.arange(0, len(contour)).reshape(-1, 1), len(kernal), axis=-1)
-    index_matrix += kernal
-    np.where(index_matrix < 0)
-    index_matrix[index_matrix < 0] += len(contour)
-    index_matrix[index_matrix >= len(contour)] -= len(contour)
+    index_matrix = index_matrix + kernal
+    index_matrix[index_matrix < 0] = index_matrix[index_matrix < 0] + len(contour)
+    index_matrix[index_matrix >= len(contour)] = index_matrix[index_matrix >= len(contour)] - len(contour)
     # index_matrix对应的点的2D位置
-    pos2d_matrix = contour[index_matrix]
+    # pos2d_matrix = contour[index_matrix]
     # [TODO] 上面这行改成下面这行，重新调参
     # pos2d_matrix = resized_uv[index_matrix]
+    if not check_aspect_ratio_outlier(resized_uv, 3)[0]:
+        pos2d_matrix = resized_uv[index_matrix]
+    else:
+        pos2d_matrix = contour[index_matrix]
 
     # Contour上的点
     contour_pos2d = pos2d_matrix[:, kernal_mid, :].reshape(len(contour), 1, 2)
@@ -735,7 +917,7 @@ def get_boundary_corner_v2(contour, resized_uv, corner_min_thresh=25, kernal_siz
         if c.ndim == 1:
             max_angle_index = []
             if len(c) == 1:
-                max_angle_index = max_angle_index.append(c[0])
+                max_angle_index.append(c[0])
             else:
                 # 取最大值的方法
                 max_angle_i = np.argmax(angles_matrix_mean[c])
@@ -776,6 +958,232 @@ def get_boundary_corner_v2(contour, resized_uv, corner_min_thresh=25, kernal_siz
         plt.show()
 
     return corner_index
+
+
+import scipy.ndimage
+
+
+
+
+
+# ==============================================================================
+# 辅助函数 1：高斯平滑 (步骤 0)
+# ==============================================================================
+
+def smooth_contour_convolution(contour: np.ndarray, sigma: float = 3.0) -> np.ndarray:
+    """使用高斯滤波平滑单个轮廓坐标，以消除高频噪声。"""
+    if sigma <= 0:
+        return contour.astype(np.float64)
+
+    contour_float = contour.astype(np.float64)
+    N = len(contour_float)
+
+    # 如果轮廓点太少（少于 2*sigma），则不平滑
+    if N < 2 * sigma:
+        return contour_float
+
+    # 沿轮廓的顺序（轴 0）进行平滑。mode='wrap' 处理闭合轮廓
+    x_smooth = scipy.ndimage.gaussian_filter1d(contour_float[:, 0], sigma, mode='wrap')
+    y_smooth = scipy.ndimage.gaussian_filter1d(contour_float[:, 1], sigma, mode='wrap')
+    return np.stack([x_smooth, y_smooth], axis=-1)
+
+
+# ==============================================================================
+# 辅助函数 2：健壮的角度计算 (步骤 1)
+# ==============================================================================
+
+def angle_between_vectors_fixed(vectors1: np.ndarray, vectors2: np.ndarray) -> float:
+    """
+    计算两个 2D 向量之间的夹角（度数），修复了零向量导致的错误。
+    Args: 向量必须是 (2,) 形状。
+    """
+    # 将向量展平以进行点积
+    v1 = vectors1.flatten()
+    v2 = vectors2.flatten()
+
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+
+    denominator = norm_v1 * norm_v2
+
+    # 零模长或极小模长修复
+    if denominator < 1e-8:
+        # 视为无曲率或噪声，角度为 0 度
+        return 0.0
+
+    cos_theta = dot_product / denominator
+
+    # 裁剪到 [-1.0, 1.0] 以处理浮点误差
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+
+    angle_rad = np.arccos(cos_theta)
+    return np.degrees(angle_rad)
+
+
+# ==============================================================================
+# 核心算法：变长尺度自适应曲率采样法
+# ==============================================================================
+
+def vectorize_contour_adaptive_distance(
+        contour: np.ndarray,
+        smooth_sigma: float = 3.0,
+        min_sample_dist: float = 10.0,
+        angle_threshold: float = 30.0,
+        min_point_dist: int = 10,
+        local_max_window: int = 5
+) -> list[int]:
+    """
+    基于变长尺度曲率计算的轮廓矢量化算法。
+
+    :param contour: Nx2 的边缘点数组。
+    :param smooth_sigma: 高斯平滑的标准差。
+    :param min_sample_dist: 向量采样时的最小弧长距离（单位长度）。
+    :param angle_threshold: 角度变化的最小阈值（度数），用于初步筛选。
+    :param min_point_dist: 最终控制点之间的最小索引距离（点数）。
+    :param local_max_window: 局部最大值搜索的窗口大小（+/-索引）。
+    :return: 选定的控制点的索引列表。
+    """
+
+    # --- 步骤 0: 预处理和鲁棒性增强 ---
+
+    # 0.1 高斯平滑
+    smoothed_contour = smooth_contour_convolution(contour, sigma=smooth_sigma)
+    N = len(smoothed_contour)
+    if N < 2:
+        return []
+
+    # 0.2 计算累积弧长 (解决问题 5)
+    diffs = np.diff(smoothed_contour, axis=0)
+    distances = np.linalg.norm(diffs, axis=1)
+
+    # 最后一个点到第一个点的距离（闭合轮廓）
+    closure_dist = np.linalg.norm(smoothed_contour[0] - smoothed_contour[-1])
+
+    arc_length = np.concatenate(([0], np.cumsum(distances)))
+    total_arc_length = arc_length[-1] + closure_dist  # 完整的轮廓长度
+
+    if total_arc_length < 2 * min_sample_dist:
+        # 轮廓太短，无法采样
+        return [0]
+
+        # --- 步骤 1: 变长尺度曲率计算 ---
+
+    angles = np.zeros(N)
+
+    for i in range(N):
+        current_arc = arc_length[i]
+
+        # 1.1 查找左邻居 (P_L)
+        target_len_L = current_arc - min_sample_dist
+        if target_len_L < 0:
+            target_len_L += total_arc_length
+
+        # 查找目标弧长在 arc_length 数组中的位置，需考虑循环
+        # 采用简单的索引循环查找以确保健壮性
+
+        len_L = 0.0
+        idx_L = i
+        while len_L < min_sample_dist and idx_L != ((i + 1) % N):
+            idx_prev = (idx_L - 1 + N) % N
+            dist = np.linalg.norm(smoothed_contour[idx_L] - smoothed_contour[idx_prev])
+            len_L += dist
+            if len_L >= min_sample_dist: break
+            idx_L = idx_prev
+
+        # 1.2 查找右邻居 (P_R)
+        len_R = 0.0
+        idx_R = i
+        while len_R < min_sample_dist and idx_R != ((i - 1 + N) % N):
+            idx_next = (idx_R + 1) % N
+            dist = np.linalg.norm(smoothed_contour[idx_R] - smoothed_contour[idx_next])
+            len_R += dist
+            if len_R >= min_sample_dist: break
+            idx_R = idx_next
+
+        # 1.3 计算角度
+        v_L = smoothed_contour[i] - smoothed_contour[idx_L]
+        v_R = smoothed_contour[idx_R] - smoothed_contour[i]
+
+        angles[i] = angle_between_vectors_fixed(v_L, v_R)
+
+    # --- 步骤 2: 局部极大值筛选 ---
+
+    potential_control_points = []
+
+    for i in range(N):
+        # 1. 初步筛选 (解决问题 1)
+        if angles[i] < angle_threshold:
+            continue
+
+        # 2. 局部最大值搜索
+        is_local_max = True
+        for j in range(-local_max_window, local_max_window + 1):
+            if j == 0: continue
+
+            idx = (i + j) % N
+            # 必须大于，不能等于，以确保找到唯一的峰值
+            if angles[idx] > angles[i]:
+                is_local_max = False
+                break
+
+        if is_local_max:
+            potential_control_points.append({'index': i, 'angle': angles[i]})
+
+    # --- 步骤 3: 距离约束和 NMS (非极大值抑制) ---
+
+    # 1. 按曲率从大到小排序
+    potential_control_points.sort(key=lambda x: x['angle'], reverse=True)
+
+    final_control_point_indices = set()
+
+    for current_point in potential_control_points:
+        idx_curr = current_point['index']
+
+        is_too_close = False
+        for idx_final in final_control_point_indices:
+            # 距离判断：使用点索引的差值（轮廓循环距离） (解决问题 3)
+            dist = min(abs(idx_curr - idx_final), N - abs(idx_curr - idx_final))
+            if dist < min_point_dist:
+                is_too_close = True
+                break
+
+        if not is_too_close:
+            final_control_point_indices.add(idx_curr)
+
+
+
+    # 如果是开放轮廓，还需要添加 N-1。这里假设是闭合轮廓，只用 0。
+
+
+    TEST=True
+    if TEST:
+        A = contour[list(final_control_point_indices)]
+        B = contour
+
+        plt.figure(figsize=(8, 6))
+
+        plt.scatter(B[:, 0], B[:, 1], color='blue', label='Points B')
+
+        plt.scatter(A[:, 0], A[:, 1], color='red', label='Points A')
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.legend()
+
+        # 设置标题和标签
+        plt.title('Scatter Plot of Points A and B')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+
+        # 显示图形
+        plt.show()
+        input("Press Enter to continue...")
+
+
+    return sorted(list(final_control_point_indices))
+
+
+
+
 
 
 def resize_uv(points_2D, panel_instance_seg, uv_bbox):
@@ -849,18 +1257,7 @@ def resize_uv(points_2D, panel_instance_seg, uv_bbox):
     return result
 
 
-def extract_boundary_pts(geo_orig, uv_bbox, mask, delta=0.023, RESO=64, erode_size=1, show_2d_approx=False):
-    """
-    提取边缘点
-    :param geo_orig:        几何图 的几何信息
-    :param mask:            几何图 的mask
-    :param delta:           Resample间距
-    :param RESO:            几何图分辨率
-    :param show_3D_garment:     调试用
-    :param show_2d_approx:      调试用
-    :param export_vis_result:   调试用
-    :return:
-    """
+def extract_boundary_pts(geo_orig, uv_bbox, mask, delta=0.023, RESO=256, erode_size=1, show_2d_approx=False):
     panel_nes = []              # 每个panel上有几个边
     contour_nes = []            # 每个contouur上有几个边
     resampled_points_3D = []    # resample后的3D的点
@@ -869,8 +1266,7 @@ def extract_boundary_pts(geo_orig, uv_bbox, mask, delta=0.023, RESO=64, erode_si
                                 # 一个Panel上可能出现多个contours，可以根据每个contour所属的Panel实例来进行合并
     edge_approx = []            # 拟合边
 
-    # 根据RESO，获取contour的最小长度
-    thresh_dict={64:16, 128:32, 256:64, 512:128, 1024:256}  # 随分辨率变化（理论上是应该是线性变化的，but it just work//)
+    thresh_dict={64:16, 128:32, 256:64, 512:128, 1024:256}
     contour_min_thresh = thresh_dict.get(RESO, 16)
 
     contour_list = []
@@ -919,7 +1315,9 @@ def extract_boundary_pts(geo_orig, uv_bbox, mask, delta=0.023, RESO=64, erode_si
 
         # 获取角点的index
         # corner_index = get_boundary_corner(contour, resized_uv[contour_idx], corner_min_thresh=25, kernal_size_shrink=0, show_2d_approx=show_2d_approx)
-        corner_index = get_boundary_corner_v2(contour, resized_uv[contour_idx], corner_min_thresh=30, kernal_size_shrink=0, show_2d_approx=show_2d_approx)
+        # corner_index = get_boundary_corner_v2(contour, resized_uv[contour_idx], corner_min_thresh=30, show_2d_approx=show_2d_approx)
+        corner_index = vectorize_contour_adaptive_distance(resized_uv[contour_idx])
+
 
         # 端点太少的情况，直接平均挑选4个点作为端点
         if len(corner_index) <= 2:
@@ -1099,7 +1497,7 @@ def get_garment_json(garment_approx_curve, panel_instance_seg, uv_bbox):
         # 如果这个是 OutLine
         if is_contour_OutLine(contour_idx, panel_instance_seg):
             p_approx_curve = garment_approx_curve[contour_idx]
-            bbox = uv_bbox[panel_instance_idx]
+            bbox = uv_bbox[panel_instance_idx].tolist()
             panel_json = {
                 "center": [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2],
                 "seqEdges": [],
@@ -1115,6 +1513,7 @@ def get_garment_json(garment_approx_curve, panel_instance_seg, uv_bbox):
                 "edges": [],
                 "vertices": [],
             }
+            p_approx_curve = [pac.tolist() for pac in p_approx_curve]
             for e_idx in range(len(p_approx_curve)):
                 edge_json = {
                     "bezierPoints": [[0, 0, 0], [0, 0, 0]],
@@ -1267,7 +1666,6 @@ def save_resaults(output_dir, g_idx,
     # save annotations.json file ===
     annotations_json_save_path = os.path.join(annotation_dir, "annotations.json")
     annotations_json = {
-        "panel_nes":panel_nes.tolist(),
         "contour_nes": contour_nes.tolist(),
         "edge_approx": np.concatenate(edge_approx).tolist(),
         "panel_instance_seg": panel_instance_seg.tolist(),
@@ -1294,9 +1692,9 @@ def save_resaults(output_dir, g_idx,
 
 
 if __name__ == "__main__":
-    data_type = "Garmage256"
+    data_type = "Garmage256"  # Generated 256x256 Garmage
 
-    data_dir = "/data/lsr/resources/Anta/251111_训练集_对比原图和增强/一些生成结果导入软件/generated"
+    data_dir = "/data/lsr/resources/Garmage_SigAisia2025/_补充材料_草图生成/常规1/generated"
 
     # 根据数据类型, 可以 采用不同的配置、读取不同的路径
     """
@@ -1305,24 +1703,23 @@ if __name__ == "__main__":
         delta：resample的间距
         gr：进行边拟合时的粒度粗细
     """
-    if data_type=="Garmage256":  # 生成的 256x256 的 Garmage
+    if data_type=="Garmage256":
         """
         feature convK55D11:
             output_dir = data_dir + "_output"
             data_path_list = sorted(glob(os.path.join(data_dir, "*.pkl")))
             garment_num = len(data_path_list)
-            cfg = {"RESO":256, "delta": 0.008, "erode_size":3}
+            cfg = {"RESO":256, "delta": 0.008, "erode_size":1}
             + 4 INF NOISE
         """
         output_dir = data_dir + "_output"
         data_path_list = sorted(glob(os.path.join(data_dir, "*.pkl")))
         garment_num = len(data_path_list)
-        cfg = {"RESO":256, "delta": 0.012, "erode_size":3}
+        cfg = {"RESO":256, "delta": 0.012, "erode_size":1}
     else:
         raise NotImplementedError
     os.makedirs(output_dir, exist_ok=True)
 
-    # 对每个数据进行处理
     for g_idx in tqdm(range(0, garment_num), desc=f"Processing {data_type} data: "):
         if data_type == "Garmage256":
             garment_fp = data_path_list[g_idx]
@@ -1354,9 +1751,18 @@ if __name__ == "__main__":
         # 获取 AIGP 的json文件（仅包含panels部分）
         garment_json = get_garment_json(garment_approx_curve, panel_instance_seg, uv_bbox)
 
-        # 保存结果
-        save_resaults(output_dir, g_idx,
-                      resampled_points_3D, edge_approx,
-                      contour_nes, panel_nes, panel_instance_seg,
-                      garment_json, full_uv_info, cfg, fp,
-                      g_basename=g_basename)
+        # test
+        continue
+
+        save_resaults(
+            output_dir,
+            g_idx,
+            resampled_points_3D,
+            edge_approx,
+            contour_nes,
+            panel_nes,
+            panel_instance_seg,
+            garment_json,
+            full_uv_info,
+            cfg, fp, g_basename=g_basename
+        )

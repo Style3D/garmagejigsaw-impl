@@ -125,6 +125,7 @@ def _create_bounding_box_mesh(min_point, max_point, color, opacity=0.2):
     return mesh
 
 
+
 def draw_bbox_geometry(
     bboxes,
     bbox_colors,
