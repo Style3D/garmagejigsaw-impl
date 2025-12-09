@@ -20,6 +20,7 @@ from utils import  (
     to_device,
     get_pointstitch,
     pointstitch_2_edgestitch4,
+    pointstitch_2_edgestitch5,
     export_video_results)
 
 # === Inference ===
@@ -54,7 +55,27 @@ def remove_noise_on_garmage(batch):
 
 def get_inference_args(parser:argparse.ArgumentParser):
     assert isinstance(parser, argparse.ArgumentParser)
-    parser.add_argument("--model_path", required=True, type=str)
+    parser.add_argument("--weight_file", default=None, type=str)
+    parser.add_argument("--data_dir", default=None, type=str)
+
+
+def check_inference_cfg(cfg, args):
+    # base setting of inference
+    cfg.DATA.SHUFFLE = False
+    cfg.BATCH_SIZE = 1
+    cfg.NUM_WORKERS = 1
+
+    # set pretrained model
+    if args.weight_file is not None:
+        if not os.path.isfile(args.weight_file):
+            raise FileNotFoundError(args.weight_file)
+        cfg.WEIGHT_FILE = args.weight_file
+
+    # set inference data loading file
+    if args.data_dir is not None:
+        cfg.DATA.DATA_DIR = args.data_dir
+
+    return cfg
 
 
 if __name__ == "__main__":
@@ -69,14 +90,17 @@ if __name__ == "__main__":
         get_inference_args
     )
 
-    model = build_model(cfg).load_from_checkpoint(cfg.WEIGHT_FILE).cuda()
+    cfg = check_inference_cfg(cfg, args)
+
+    # model = build_model(cfg).load_from_checkpoint(cfg.WEIGHT_FILE).cuda()
+    ModelClass = type(build_model(cfg))
+    model = ModelClass.load_from_checkpoint(cfg.WEIGHT_FILE, cfg=cfg, weights_only=False).cuda()
     model.pc_cls_threshold = 0.5
 
     model.eval()
 
     inference_loader = build_stylexd_dataloader_inference(cfg)
     for idx, batch in tqdm(enumerate(inference_loader)):
-        try:
             batch = to_device(batch, model.device)
 
             # === Avoid excessive number of vertices ===
@@ -114,12 +138,17 @@ if __name__ == "__main__":
             batch = to_device(batch, "cpu")
 
             # === get seg2seg stitches ===
-            edgestitch_results = pointstitch_2_edgestitch4(batch, inf_rst,
-                                                           stitch_mat_full, stitch_indices_full,
-                                                           unstitch_thresh=12, fliter_len=3, division_thresh = 3,
-                                                           optimize_thresh_neighbor_index_dis=6,
-                                                           optimize_thresh_side_index_dis=3,
-                                                           auto_adjust=False)
+            # edgestitch_results = pointstitch_2_edgestitch4(batch, inf_rst,
+            #                                                stitch_mat_full, stitch_indices_full,
+            #                                                unstitch_thresh=12, fliter_len=3, division_thresh = 3,
+            #                                                optimize_thresh_neighbor_index_dis=6,
+            #                                                optimize_thresh_side_index_dis=3,
+            #                                                auto_adjust=False)
+            edgestitch_results = pointstitch_2_edgestitch5(
+                batch, inf_rst,
+                stitch_mat_full,
+                stitch_indices_full
+            )
             garment_json = edgestitch_results["garment_json"]
 
             # === export visualization data ===
@@ -164,6 +193,3 @@ if __name__ == "__main__":
                         , vis_resource=vis_resource, mesh_file_path=batch['mesh_file_path'][0])
 
             torch.cuda.empty_cache()
-        except Exception as e:
-            print(e)
-            continue

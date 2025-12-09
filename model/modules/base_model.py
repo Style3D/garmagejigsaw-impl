@@ -3,7 +3,6 @@ import time
 import torch
 from torch import optim
 import pytorch_lightning
-from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 
 from utils import filter_wd_parameters, CosineAnnealingWarmupRestarts
 
@@ -30,7 +29,7 @@ class BaseModel(pytorch_lightning.LightningModule):
         )
         return loss_dict['loss']
 
-    def training_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
+    def training_epoch_end(self, outputs) -> None:
         torch.cuda.empty_cache()
 
     def validation_step(self, data_dict, batch_idx):

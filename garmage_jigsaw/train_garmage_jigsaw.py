@@ -61,7 +61,7 @@ def train_model(cfg):
         max_epochs=cfg.TRAIN.NUM_EPOCHS,
         callbacks=callbacks,
         benchmark=cfg.CUDNN,
-        gradient_clip_val=0.1, # 梯度裁剪
+        gradient_clip_val=0.1,
         check_val_every_n_epoch=cfg.TRAIN.VAL_EVERY,
         log_every_n_steps=5,
         profiler='simple',

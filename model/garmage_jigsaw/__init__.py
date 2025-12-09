@@ -1,3 +1,1 @@
 from .garmage_jigsaw_model import GarmageJigsawModel
-from .point_classifier import PointClassifier
-from .stitch_predictor import StitchPredictor
