@@ -44,7 +44,7 @@ def save_bn_stats(model):
     stats = {}
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
-            # Set momentum (note: PyTorch default is 0.1, 0.9 is unusually high)
+            # Set momentum
             module.momentum = 0.9
 
             # Copy tensors to CPU as a precaution and ensure they are detached from the autograd graph
@@ -67,9 +67,6 @@ def restore_bn_stats(model, stats_checkpoint):
 
             # Ensure the BN layer is set to track running statistics
             module.track_running_stats = True
-
-            # Restore the momentum set during training (usually 0.1)
-            module.momentum = 0.1
 
 
 def add_noise_on_garmage(batch, inf_noise_strength=3):
