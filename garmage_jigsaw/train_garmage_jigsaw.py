@@ -13,17 +13,13 @@ def train_model(cfg):
     import faulthandler
     faulthandler.enable(all_threads=True)
 
-    if len(cfg.WEIGHT_FILE) > 0:
+    if len(cfg.WEIGHT_FILE) > 0 and os.path.exists(cfg.WEIGHT_FILE):
         ckp_path = cfg.WEIGHT_FILE
         print(f"cfg.WEIGHT_FILE : {ckp_path}")
-        ex = "" if os.path.exists(ckp_path) else "Not"
-        print(f"{ckp_path} is {ex} exist")
     else:
         ckp_path = None
-        print(f"cfg.WEIGHT_FILE is None")
-    if len(cfg.WEIGHT_FILE) > 0 and not os.path.exists(ckp_path):
-        print(f"cfg.WEIGHT_FILE No such file: {ckp_path}")
-        ckp_path = None
+        if len(cfg.WEIGHT_FILE) > 0:
+            print(f"cfg.WEIGHT_FILE {cfg.WEIGHT_FILE} not found.")
 
     # initial Wandb logger
     logger_name = f"{cfg.MODEL_NAME}"

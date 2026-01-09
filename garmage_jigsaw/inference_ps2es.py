@@ -95,7 +95,7 @@ def remove_noise_on_garmage(batch):
 def get_inference_args(parser:argparse.ArgumentParser):
     assert isinstance(parser, argparse.ArgumentParser)
     parser.add_argument("--weight_file", default=None, type=str)
-    parser.add_argument("--data_dir", default="data/stylexd_jigsaw/inference/_tmp_Garmage256", type=str)
+    parser.add_argument("--data_dir", default=None, type=str)
 
     # inference noise
     parser.add_argument("--update_dis_iter", default=1, type=int)
@@ -120,7 +120,7 @@ def check_inference_cfg(cfg, args):
     cfg.DATA.TRANS_RANGE = 0
     cfg.DATA.BBOX_NOISE_STRENGTH = 0
 
-    args.save_dir = os.path.join(os.path.dirname(args.data_dir), "jigsaw_output")
+    args.save_dir = os.path.join(os.path.dirname(args.data_dir), "garmagejigsaw_output")
 
     return cfg
 
@@ -128,12 +128,11 @@ def check_inference_cfg(cfg, args):
 if __name__ == "__main__":
     set_seed(seed = 42)
 
-    data_type = "Garmage256"
     from utils.config import cfg
     from utils.parse_args import parse_args
 
     args = parse_args(
-        "Jigsaw",
+        "GarmageJigsaw Train",
         get_inference_args
     )
 
