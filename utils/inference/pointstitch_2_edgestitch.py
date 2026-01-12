@@ -241,25 +241,30 @@ def optimize_stitch_edge_list_byNeighbor(stitch_edge_list_paramOrder, all_contou
                                          optimize_thresh_neighbor_index_dis=6,
                                          optimize_thresh_side_index_dis=4):
     """
-    todo 这个算法得重新设计
-    优化相邻缝合边之间的关系
+    TODO: this algorithm needs to be redesigned
+    Optimize the relationship between neighboring stitch edges
     :param stitch_edge_list_paramOrder:
     :param all_contour_info:
     :param all_edge_info:
-    :param optimize_thresh_neighbor_index_dis:       优化缝边之间距离的阈值（间距小于这一阈值的一对缝边，它们之间的端点会被优化）
-    :param optimize_thresh_side_index_dis:           缝边与边端点之间的阈值（小于阈值的缝边的端点将在优化时吸附到边的端点上）
+    :param optimize_thresh_neighbor_index_dis: threshold for optimizing distances between stitch edges
+                                                (pairs of stitch edges whose distance is smaller than this threshold
+                                                 will have their endpoints optimized)
+    :param optimize_thresh_side_index_dis: threshold between stitch edges and edge endpoints
+                                           (stitch edge endpoints within this threshold will be snapped to edge endpoints)
     :return:
     """
     # todo
     """
-    遍历这个contour上每个缝合边:
-        对于一个缝合边上的两个端点（A，B）:
-            其中一个缝合边端点（A）找到离自己最近的 板片端点（P） 和 其它缝合边端点（C_1-N）
-            这个缝合边端点找到所有离自己近的缝合边，每个缝合边上最多取一个端点
-            如果（A）在板片边端点上，所有点移到边端点
-            反之，找目标点中哪些点在
+    Traverse each stitch edge on this contour:
+        For the two endpoints (A, B) of a stitch edge:
+            One stitch edge endpoint (A) finds the nearest panel endpoint (P)
+            and other stitch edge endpoints (C_1-N)
+            This stitch edge endpoint finds all stitch edges close to itself,
+            taking at most one endpoint from each stitch edge
+            If (A) lies on a panel edge endpoint, all points move to the edge endpoint
+            Otherwise, find which target points are among them
         
-        需要考虑存在多个特别近的端点的情况
+        Need to consider the case where multiple endpoints are extremely close
     """
     current_contour_info = all_contour_info[stitch_edge_list_paramOrder[0]['start_point']['contour_id']]
     for se_idx, stitch_edge in enumerate(stitch_edge_list_paramOrder):
@@ -268,23 +273,23 @@ def optimize_stitch_edge_list_byNeighbor(stitch_edge_list_paramOrder, all_contou
         else:
             stitch_edge_previous = stitch_edge_list_paramOrder[se_idx - 1]
 
-        # 获取两个边的可能衔接的部分 ---------------------------------------------------------------------------------------------------
-        # 定义：right是位于相对顺时针的方向，left是位于相对逆时针的方向
+        # Get the potentially connectable parts of the two edges ----------------------------------------------
+        # Definition: right is in the relative clockwise direction, left is in the relative counter-clockwise direction
 
-        # 衔接处的两个点pre_right_point、cur_left_point，和更远的两个点 ===
+        # The two points at the connection (pre_right_point, cur_left_point), and the two farther points ===
         cur_left_key = "start_point" if not stitch_edge["isCC"] else "end_point"
         cur_right_key = "start_point" if stitch_edge["isCC"] else "end_point"
-        cur_left_point = stitch_edge[cur_left_key]  # 当前边的两个端点中，处于相对逆时针方向的点
+        cur_left_point = stitch_edge[cur_left_key]  # Among the two endpoints of the current edge, the one in the relative counter-clockwise direction
         cur_right_point = stitch_edge[cur_right_key]
 
         pre_left_key = "end_point" if stitch_edge_previous["isCC"] else "start_point"
         pre_right_key = "end_point" if not stitch_edge_previous["isCC"] else "start_point"
         pre_left_point = stitch_edge_previous[pre_left_key]
-        pre_right_point = stitch_edge_previous[pre_right_key]  # 上一条边的两个端点中，处于相对顺时针方向的点
+        pre_right_point = stitch_edge_previous[pre_right_key]  # Among the two endpoints of the previous edge, the one in the relative clockwise direction
 
         index_dis_pre_right_cur_left_2side = cal_neigbor_points_index_dis(pre_right_point, cur_left_point, all_contour_info)
         param_dis_pre_right_cur_left_2side = cal_neigbor_points_param_dis(pre_right_point, cur_left_point, all_contour_info)
-        min_dis_index_pre_right_cur_left = 0 if index_dis_pre_right_cur_left_2side[0] < index_dis_pre_right_cur_left_2side[1] else 1     # 距离较小的那一端的 index
+        min_dis_index_pre_right_cur_left = 0 if index_dis_pre_right_cur_left_2side[0] < index_dis_pre_right_cur_left_2side[1] else 1  # index of the smaller distance side
         index_dis_pre_right_cur_left = index_dis_pre_right_cur_left_2side[min_dis_index_pre_right_cur_left]
         param_dis_pre_right_cur_left = param_dis_pre_right_cur_left_2side[min_dis_index_pre_right_cur_left]
 
@@ -293,35 +298,36 @@ def optimize_stitch_edge_list_byNeighbor(stitch_edge_list_paramOrder, all_contou
         dis_pre_right2cur_right = min(cal_neigbor_points_index_dis(pre_right_point, cur_right_point, all_contour_info))
 
 
-        # 离当前衔接处的两个端点最近的两个板片端点 ===
+        # The two panel edge endpoints closest to the two endpoints at the current connection ===
         pre_right_point_nearst_edge_side_point, pre_right_point_nearst_edge_side_dis = find_nearst_pattern_side_point(pre_right_point, all_edge_info, all_contour_info)
         cur_left_point_nearst_edge_side_point, cur_left_point_nearst_edge_side_dis = find_nearst_pattern_side_point(cur_left_point, all_edge_info, all_contour_info)
 
         optimized = False
-        # 如果两个缝边衔接处间距小于阈值，且不存在另一端点离衔接处更近
+        # If the distance between the two stitch edge endpoints at the connection is below the threshold,
+        # and there is no other endpoint closer to the connection
         if dis_pre_right2cur_left < optimize_thresh_neighbor_index_dis:
-            # 存在错位
-            if dis_pre_right2cur_left>=dis_pre_left2cur_left or dis_pre_right2cur_left>=dis_pre_right2cur_right:
+            # Misalignment exists
+            if dis_pre_right2cur_left >= dis_pre_left2cur_left or dis_pre_right2cur_left >= dis_pre_right2cur_right:
                 optimized = False
-            # 两个点都在板片端点上
-            elif pre_right_point_nearst_edge_side_dis<1 and pre_right_point_nearst_edge_side_dis<1:
+            # Both points are on panel edge endpoints
+            elif pre_right_point_nearst_edge_side_dis < 1 and pre_right_point_nearst_edge_side_dis < 1:
                 optimized = False
-            # 仅一个点在板片端点上
-            elif (pre_right_point_nearst_edge_side_dis<1) ^ (pre_right_point_nearst_edge_side_dis<1):
+            # Only one point is on a panel edge endpoint
+            elif (pre_right_point_nearst_edge_side_dis < 1) ^ (pre_right_point_nearst_edge_side_dis < 1):
                 target_side_point = pre_right_point_nearst_edge_side_point \
-                    if pre_right_point_nearst_edge_side_dis<1 else cur_left_point_nearst_edge_side_point
+                    if pre_right_point_nearst_edge_side_dis < 1 else cur_left_point_nearst_edge_side_point
                 target_global_param = target_side_point["global_param"]
-                optimized=True
-            # 两个点都不在端点上，取中间点
+                optimized = True
+            # Neither point is on an endpoint; take the midpoint
             else:
-                # 两个边中间有缝隙
+                # There is a gap between the two edges
                 if min_dis_index_pre_right_cur_left == 1:
                     target_global_param = pre_right_point["global_param"] + param_dis_pre_right_cur_left / 2
                     optimized = True
-                # 两个边中间有重合
+                # There is overlap between the two edges
                 else:
-                    # 重合情况用更小的阈值
-                    if index_dis_pre_right_cur_left <= max(optimize_thresh_neighbor_index_dis/4, 2):
+                    # Use a smaller threshold for overlap cases
+                    if index_dis_pre_right_cur_left <= max(optimize_thresh_neighbor_index_dis / 4, 2):
                         target_global_param = cur_left_point["global_param"] + param_dis_pre_right_cur_left / 2
                         optimized = True
                     else:
@@ -329,18 +335,18 @@ def optimize_stitch_edge_list_byNeighbor(stitch_edge_list_paramOrder, all_contou
         else:
             optimized = False
 
-        # 应用结果
+        # Apply the result
         if optimized:
-            # 如果越界到别的 contour 上了，则修正
+            # If it crosses into another contour, correct it
             if target_global_param > current_contour_info["param_end"]:
                 target_global_param = current_contour_info["param_start"] + target_global_param - current_contour_info["param_end"]
 
-            # 找到离 目标global_param所在位置 最近的点
+            # Find the point closest to the target global_param position
             target_point_id, first_close_point, second_close_point = global_param2point_id(target_global_param, current_contour_info)
-            target_edge_info = all_edge_info[first_close_point["edge_id"]]  # 获取所在边的信息
-            target_param = target_global_param - target_edge_info["param_start"]  # 局部param
+            target_edge_info = all_edge_info[first_close_point["edge_id"]]  # Get the information of the edge it lies on
+            target_param = target_global_param - target_edge_info["param_start"]  # Local param
 
-            # 将计算出的新的目标位置赋给两个缝合边
+            # Assign the computed new target position to both stitch edges
             for point in [pre_right_point, cur_left_point]:
                 point["edge_id"] = target_edge_info["id"]
                 point["global_param"] = target_global_param
@@ -350,7 +356,8 @@ def optimize_stitch_edge_list_byNeighbor(stitch_edge_list_paramOrder, all_contou
 
 def optimize_stitch_edge_list_byApproxEdge(stitch_edge_list ,thresh, all_contour_info, all_edge_info):
     """
-    将 离边端点特别近 且 不与其它缝边相衔接 的缝边的端点 的位置进行调整
+    Adjust the positions of stitch edge endpoints that are very close to panel edge endpoints
+    and are not connected to other stitch edges.
     :param stitch_edge_list:
     :param thresh:
     :param all_contour_info:
@@ -358,7 +365,7 @@ def optimize_stitch_edge_list_byApproxEdge(stitch_edge_list ,thresh, all_contour
     :return:
     """
 
-    # 属于同一contour上的缝合边会根据中间点的位置进行排序
+    # Stitch edges belonging to the same contour will be sorted according to the position of their middle point
     cmp_fun = lambda x: (cal_stitch_edge_middle_index(x, all_contour_info))
 
     stitch_edge_list_contourOrder = sorted(stitch_edge_list, key=lambda x: (x["start_point"]["contour_id"],))
@@ -366,55 +373,57 @@ def optimize_stitch_edge_list_byApproxEdge(stitch_edge_list ,thresh, all_contour
     start_contour_id = stitch_edge_list_contourOrder[0]["start_point"]["contour_id"]
     for e_idx, stitch_edge in enumerate(stitch_edge_list_contourOrder):
         if stitch_edge["start_point"]["contour_id"] != start_contour_id or e_idx == len(stitch_edge_list_contourOrder) - 1:
-            # 如果最后一个的contour_id没变化
+            # If the last one's contour_id has not changed
             if not stitch_edge["start_point"]["contour_id"] != start_contour_id and e_idx == len(stitch_edge_list_contourOrder) - 1:
                 stitch_edge_list_paramOrder.append(stitch_edge)
 
-            # 【此时，stitch_edge_list_paramOrder中所有的缝边都位于同一contour上】
-            # 对这个stitch_edge_list_paramOrder排序
+            # [At this moment, all stitch edges in stitch_edge_list_paramOrder lie on the same contour]
+            # Sort this stitch_edge_list_paramOrder
             stitch_edge_list_paramOrder = sorted(stitch_edge_list_paramOrder, key=cmp_fun)
 
-            # 对同一contour上的缝边，尝试找到可吸附板片端点 ------------------------------------------------------------------------------
+            # For stitch edges on the same contour, try to find attachable panel edge endpoints --------------
             for se_idx, start_stitch_edge in enumerate(stitch_edge_list_paramOrder):
-                # 当前的 start_stitch_edge 在顺时针方向上的上一条边
+                # The previous edge of the current start_stitch_edge in the clockwise direction
                 if se_idx == 0:
                     start_stitch_edge_previous = stitch_edge_list_paramOrder[-1]
                 else:
                     start_stitch_edge_previous = stitch_edge_list_paramOrder[se_idx - 1]
 
-                # === 获取两个边的可能衔接的部分 ===
-                # 定义：right是位于相对顺时针的方向，left是位于相对逆时针的方向
+                # === Get the potentially connectable parts of the two edges ===
+                # Definition: right is in the relative clockwise direction, left is in the relative counter-clockwise direction
                 pre_right_key = "end_point" if not start_stitch_edge_previous["isCC"] else "start_point"
                 cur_left_key = "start_point" if not start_stitch_edge["isCC"] else "end_point"
-                pre_right_point = start_stitch_edge_previous[pre_right_key]  # 上一条边的两个端点中，处于相对顺时针方向的点
-                cur_left_point = start_stitch_edge[cur_left_key]  # 当前边的两个端点中，处于相对逆时针方向的点
+                pre_right_point = start_stitch_edge_previous[pre_right_key]  # Among the two endpoints of the previous edge, the one in the relative clockwise direction
+                cur_left_point = start_stitch_edge[cur_left_key]  # Among the two endpoints of the current edge, the one in the relative counter-clockwise direction
 
-                # 其它部分的俩个点
+                # The other two points
                 pre_left_key = "end_point" if start_stitch_edge_previous["isCC"] else "start_point"
                 cur_right_key = "start_point" if start_stitch_edge["isCC"] else "end_point"
                 pre_left_point = start_stitch_edge_previous[pre_left_key]
                 cur_right_point = start_stitch_edge[cur_right_key]
 
-                # 对于当前缝合边上的顺时针起点 和 上一条边的顺时针终点，分别找到可吸附的板片端点
+                # For the clockwise start point of the current stitch edge and the clockwise end point of the previous edge,
+                # find attachable panel edge endpoints respectively
                 for point in [pre_right_point, cur_left_point]:
                     edge = all_edge_info[point["edge_id"]]
                     edge_side_point = [edge["points_info"][0], edge["points_info"][-1]]
-                    # 缝合边端点 到 所在边的两个端点 的距离
+                    # Distance from the stitch edge endpoint to the two endpoints of the edge it lies on
                     side_point_index_dis = [
                         min(cal_neigbor_points_index_dis(point, edge_side_point[0], all_contour_info)),
                         min(cal_neigbor_points_index_dis(point, edge_side_point[1], all_contour_info)),
                     ]
 
                     """
-                    对于一个缝合边端点，会优先找其所在的板片矢量边上最近的一个边端点尝试进行合并
-                    如果合并失败，再尝试距离稍远的另一个
+                    For a stitch edge endpoint, it will first try to merge with the nearest endpoint
+                    on the panel vector edge it lies on.
+                    If the merge fails, it will then try the other one that is slightly farther away.
                     """
                     optimized = False
                     side_point_index_dis_index = 0 if side_point_index_dis[0] < side_point_index_dis[1] else 1
                     for i in range(2):
                         if 0 <= side_point_index_dis[side_point_index_dis_index] <= thresh:
                             panel_side_point = edge_side_point[side_point_index_dis_index]
-                            # 对于一个板片端点，如果它离 pre_left_point 或 cur_right_point 更近，则会被跳过
+                            # For a panel endpoint, if it is closer to pre_left_point or cur_right_point, it will be skipped
                             if (min(cal_neigbor_points_index_dis(panel_side_point, point, all_contour_info)) >
                                     min(cal_neigbor_points_index_dis(panel_side_point, pre_left_point, all_contour_info))):
                                 continue
@@ -428,10 +437,10 @@ def optimize_stitch_edge_list_byApproxEdge(stitch_edge_list ,thresh, all_contour
 
                         if optimized:
                             break
-                        # 且换至另一个稍微远一点的缝合边
+                        # Switch to the other, slightly farther stitch edge endpoint
                         side_point_index_dis_index = 1 - side_point_index_dis_index
 
-            # 切换到下一个 contour
+            # Switch to the next contour
             start_contour_id = stitch_edge["start_point"]["contour_id"]
             stitch_edge_list_paramOrder = [stitch_edge]
         else:
@@ -462,43 +471,45 @@ def load_data(batch):
 
 def find_best_endpoints_np_left(stitch_points_info, contour_info, is_cc):
     """
-    根据给定的一连串可能不是很有序的点，以及时针方向，找到其中的起点和终点
+    Given a series of points that may not be well-ordered and a clockwise/counter-clockwise direction,
+    find the start point and end point among them.
     """
 
     pts = torch.tensor([p["id"] for p in stitch_points_info]).detach().cpu().numpy()
     contour_index_start = contour_info['index_start'].detach().cpu().numpy()
     contour_len = (contour_info['index_end'] - contour_info['index_start'] + 1).detach().cpu().numpy()
 
-    # 保证输入为 ndarray，便于并行计算
+    # Ensure input is ndarray for convenient parallel computation
     if not isinstance(pts, np.ndarray):
         pts = np.array(pts, dtype=np.int64)
 
-    # 输入 pts 长度的一半
+    # Half of the length of pts
     half = (len(pts) + 1) // 2
-    # half = None
 
-    # 环上索引
+    # Indices on the circular contour
     idx_targets = (pts - contour_index_start) % contour_len
-    # 所有可能的起点，仅限于前半段（绝大多数起点端点出现在这一范围）
+    # All possible start points, limited to the first half
+    # (most start/end points appear in this range)
     if half is not None:
         idx_starts = idx_targets[:half]  # shape (half,)
 
-    # 计算从每个起点到每个目标的步数
+    # Compute the number of steps from each start to each target
     if is_cc:
         dist = (idx_starts[:, None] - idx_targets[None, :]) % contour_len
     else:
         dist = (idx_targets[None, :] - idx_starts[:, None]) % contour_len
 
-    # 每个起点覆盖所有目标所需步数
+    # Steps required for each start point to cover all targets
     lengths_cover = dist.max(axis=1) + 1  # shape (half,)
 
-    # 选覆盖所有目标需要最小步数的点作为 起点端点
+    # Choose the point that requires the minimum steps to cover all targets as the start endpoint
     best_i = int(np.argmin(lengths_cover))
     best_start_idx = int(idx_starts[best_i])
     best_start = contour_index_start + best_start_idx
     best_length = int(lengths_cover[best_i])
 
-    # 选取的起点，根据 is_cc 覆盖所有输入点的路径中的最后一个点，这个点作为 终点端点
+    # For the selected start point, choose the last point on the path that covers all input points
+    # (based on is_cc) as the end endpoint
     far_j = int(np.argmax(dist[best_i]))
     best_end_idx = int(idx_targets[far_j])
     best_end = contour_index_start + best_end_idx
