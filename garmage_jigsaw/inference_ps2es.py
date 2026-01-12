@@ -192,8 +192,7 @@ if __name__ == "__main__":
                                                            stitch_mat_full, stitch_indices_full,
                                                            unstitch_thresh=6, fliter_len=2, division_thresh = 5,
                                                            optimize_thresh_neighbor_index_dis=6,
-                                                           optimize_thresh_side_index_dis=8,
-                                                           auto_adjust=False)
+                                                           optimize_thresh_side_index_dis=8)
             garment_json = edgestitch_results["garment_json"]
 
             # === export visualization data ===
