@@ -180,3 +180,13 @@ You should copy the code of `**garmage_jigsaw/post_processing/arrangement_2_spro
 Then change `data_root` to the  and run script by press the button shown in image below.
 
 <p align="center"><img src="assest/images/postprocess_arrangement_2_sproj.png" width=100%"></p>
+    --data_dir <garmagenet-generated-dir>_extracted \
+    --update_dis_iter 2 --inf_noise_strength 6
+```
+
+## 📃 License
+This project is licensed under the CC BY-NC-ND 4.0 License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgement
+We extend our sincere gratitude to [Jigsaw](https://github.com/Jiaxin-Lu/Jigsaw) and [PuzzleFusion++](https://github.com/eric-zqwang/puzzlefusion-plusplus) who laid the foundation for GarmageJigsaw.
+
