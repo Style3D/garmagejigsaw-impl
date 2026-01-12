@@ -141,9 +141,9 @@ The GarmageJigsaw outputs like following.
 
 <p align="center"><img src="assest/images/postprocess_GarmageJigsaw_output.png" width="100%"></p>
 
-## 👕 Post-Processing
-
-We use the **Style3D Studio** software for post-processing. GarmageJigsaw outputs imclude a vectorized **SewingPattern**. After triangulating it and arranging it using the geometry in **Garmage**, a garment that supports physical simulation can be obtained.
+## 👕 Integrating to [Style3D Studio](https://studio.style3d.com/)
+GarmageJigsaw outputs a vectorized **sewing pattern** configuration stored in JSON format. 
+After triangulating it and arranging it using the geometry in **Garmage**, a garment that supports physical simulation can be obtained.
 
 ### 🦾Triangulation
 

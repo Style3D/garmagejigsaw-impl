@@ -27,7 +27,7 @@ from utils import  (
     set_seed,
     to_device,
     get_pointstitch,
-    pointstitch_2_edgestitch5,
+    pointstitch_2_edgestitch,
     export_video_results)
 
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
             batch = to_device(batch, "cpu")
 
             # === get seg2seg stitches ===
-            edgestitch_results = pointstitch_2_edgestitch5(batch, inf_rst,
+            edgestitch_results = pointstitch_2_edgestitch(batch, inf_rst,
                                                            stitch_mat_full, stitch_indices_full,
                                                            unstitch_thresh=6, fliter_len=2, division_thresh = 5,
                                                            optimize_thresh_neighbor_index_dis=6,
