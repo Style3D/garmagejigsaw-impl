@@ -146,29 +146,24 @@ As above, GarmageJigsaw outputs **vectorized sewing patterns** in JSON format (`
 
 ### 🦾Triangulation
 
-**[Step 1]** Import the output of **GarmageJigsaw** into the **Style3D Studio** software and save it as a `.sproj` file *(Run in **Style3d Studio**)*.
-
-You should copy the code of  **`garmage_jigsaw/post_processing/json_2_sproj.py`** to the Style3D Studio script window. 
-
-Then change `data_root` to the `<garmagenet-output-dir>/garmagejigsaw_output` and run script by press the button shown in image below.
+Copy the code of **`garmage_jigsaw/post_processing/json_2_sproj.py`** to the Style3D Studio script window. Change `data_root` to `<garmagenet-output-dir>/garmagejigsaw_output` and run the script.
 
 <p align="center"><img src="assest/images/postprocess_json_2_sproj.png" width=100%"></p>
 
 ------
-
-**[Step 2]** Export the flattened triangulated patterns in `.obj` format from the `.sproj` file *(Run in **IDE**)*.
+<!-- 
+**[Step 2]** Export the triangulated mesh of the flat pattern in `.obj` format from the `.sproj` file *(Run in **IDE**)*.
 
 ```bash
 python garmage_jigsaw/post_processing/sproj_2_json_obj.py \
 	--data_root <garmagenet-output-dir>/arrangement
-```
+``` -->
 
 <p align="center"><img src="assest/images/postprocess_sproj_2_json_obj.png" width=100%"></p>
 
-### 🦿Arrangement
+### 🦿Transfer Draping Initialization from Garmage to Triangle Mesh
 
-**[Step 3]** Arrange the triangulated flattened patterns using the geometric information from generated **Garmage** *(Run in **IDE**)*.
-
+Querying per-vertex 3D location from Garmage by running the following script from command line:
 ```
 python garmage_jigsaw/post_processing/arrangement.py \
 	--data_dir <garmagenet-output-dir>/arrangement
@@ -178,16 +173,10 @@ python garmage_jigsaw/post_processing/arrangement.py \
 
 ------
 
-**[Step 4]** Import the arranged triangulated pattern pieces together with the sewing pattern into the software. *(Run in **Style3d Studio**)*.
-
-```
-Copy the code of garmage_jigsaw/post_processing/arrangement_2_sproj.py to the Style3D Studio script window.
-Change data_root in the code.
-Run script in Style3D Studio.
-```
+Import the initialization results back to Style3D Studio by running `garmage_jigsaw/post_processing/arrangement_2_sproj.py` from Style3D Studio's script environment. Remember to change the `data_root` to the output directory (e.g. `<garmagenet-output-dir>/arrangement`) in the previous step. 
 
 You should copy the code of `**garmage_jigsaw/post_processing/arrangement_2_sproj.py**` to the Style3D Studio script window. 
 
-Then change `data_root` to the `<garmagenet-output-dir>/arrangement` and run script by press the button shown in image below.
+Then change `data_root` to the  and run script by press the button shown in image below.
 
 <p align="center"><img src="assest/images/postprocess_arrangement_2_sproj.png" width=100%"></p>
