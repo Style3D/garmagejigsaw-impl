@@ -12,7 +12,7 @@ RESUME: false
 WANDB:
   ID: gammtewg
 
-GPUS: [0, 1]  # GPUS: [0, 1]
+GPUS: [0, 1]
 BATCH_SIZE: 6
 NUM_WORKERS: 6
 

@@ -18,7 +18,7 @@ def export_video_results(batch, inf_rst,
                        stitch_pcs, unstitch_pcs,
                         stitch_indices, logits,
                        data_id, vid_len, output_dir=""):
-    # 按panel的点的旋转视频
+    # Rotating video of point clouds grouped by panels
     pcs = batch["pcs"].squeeze(0)
     num_parts = batch["num_parts"].item()
     piece_id = batch["piece_id"].squeeze(0).detach().cpu().numpy()
@@ -27,7 +27,7 @@ def export_video_results(batch, inf_rst,
 
     # === Geometry Image ===
 
-    # Garmage Visualize
+    # Garment visualization
     with open(glob(os.path.join(batch["mesh_file_path"][0], "original_data","*.pkl"))[0], 'rb') as f:
         orig_data = pickle.load(f, fix_imports=True)
     n_surfs = orig_data["surf_bbox"].shape[-2]
@@ -56,13 +56,15 @@ def export_video_results(batch, inf_rst,
         export_data_config=get_export_config(os.path.join(output_dir, "geometry_bbox_vis", f"{data_id}".zfill(5)), pic_num=vid_len)
     )
 
-    # 提取的边缘点的旋转视频
+    # Rotating video of extracted boundary points
     pointcloud_visualize(pcs_parts, colormap='coolwarm', colornum=len(pcs_parts), color_norm=[0, len(pcs_parts)],
                          export_data_config=get_export_config(os.path.join(output_dir, "point_cloud_vis", f"{data_id}".zfill(5)), pic_num=vid_len))
-    # 点分类的旋转视频
+
+    # Rotating video of point cloud classification
     pointcloud_visualize([stitch_pcs, unstitch_pcs], colormap='bwr', colornum=2, color_norm=[0, 1],
                          export_data_config=get_export_config(os.path.join(output_dir, "point_cloud_cls_vis", f"{data_id}".zfill(5)), pic_num=vid_len))
-    # 缝合的旋转视频
+
+    # Rotating video of stitching/seaming results
     pointcloud_and_stitch_logits_visualize([stitch_pcs, unstitch_pcs],
                                            stitch_indices, logits, colormap='bwr', colornum=2, color_norm=[0, 1],
                                            title=f"predict pcs classify",
