@@ -25,9 +25,10 @@ __C.GARMAGE_JIGSAW.ENCODER = 'pointnet2_pt.msg.dynamic'
 __C.GARMAGE_JIGSAW.TF_LAYER_NUM = 1
 __C.GARMAGE_JIGSAW.TF_NUM_HEADS = 8
 __C.GARMAGE_JIGSAW.TF_NUM_SAMPLE = 16
-__C.GARMAGE_JIGSAW.USE_TF_BLOCK = False  # 是否使用 PointTransformer Block 来将每个 PointTransformer 进行分别封装
+# Whether to use PointTransformer Blocks to encapsulate each PointTransformer separately
+__C.GARMAGE_JIGSAW.USE_TF_BLOCK = False
 __C.GARMAGE_JIGSAW.TF = edict()
-__C.GARMAGE_JIGSAW.TF.NORM = "batch"  # choice: "batch" , "instance"
+__C.GARMAGE_JIGSAW.TF.NORM = "batch"  # choice: "batch", "instance"
 
 
 # feature conv before PointTransformer

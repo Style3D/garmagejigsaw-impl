@@ -41,7 +41,7 @@ Preprocess training data:
 
 ```bash
 # Preprocess Garmageset raw objs.
-python data_process/garmageset/preprocess_stylexd.py \
+python data_process/garmageset/preprocess_garmageset.py \
 	--objs_dir <garmageset-root>/raw \
 	--output_root <garmageset-root>/garmagejigsaw_data/preprocessed_jigsaw_train
 

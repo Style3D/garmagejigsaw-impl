@@ -91,7 +91,7 @@ class res_block_xd_default(nn.Module):
 
 class feature_conv_layer_contourwise(nn.Module):
     """
-    对同属于一个环的点的特征进行混合
+    Mixes the features of points belonging to the same loop (contour).
 
     :param in_channels:
     :param out_channels:
@@ -110,9 +110,6 @@ class feature_conv_layer_contourwise(nn.Module):
         self.dilation = dilation
         self.stride = 1
         self.type = type
-
-        # if not len(self.kernel_size) == len(self.dilation):
-        #     raise ValueError("kernel_size and dilation must have same length")
 
         if self.type == "default":
             self.padding = (kernel_size - 1) // 2
