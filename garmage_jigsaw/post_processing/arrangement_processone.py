@@ -1,17 +1,9 @@
-"""
-STEP 3
-
-Run In IDE.
-
-Arrange triangulated flatten panels by there corresponding garmage.
-"""
-
 
 import os
+import sys
 import json
 import pickle
 import argparse
-from glob import glob
 from copy import deepcopy
 
 import cv2
@@ -351,7 +343,6 @@ def query_geo_img_one_panel(query_uv, panel_spec, geo_img, mask_img):
     print('*** geo_img: ', geo_img.shape, geo_img.min(), geo_img.max())
     print('*** mask_img: ', mask_img.shape, mask_img.min(), mask_img.max())
 
-
     panel_center = panel_spec["center"]
 
     converted_uv = coor_sys_conversion(query_uv, panel_center, RESO=256)
@@ -359,52 +350,59 @@ def query_geo_img_one_panel(query_uv, panel_spec, geo_img, mask_img):
     return xyz
 
 
+EXIT_OK = 0
+EXIT_MISSING_FILE = 1
+EXIT_RUNTIME_ERROR = 2
+
+
+def main(data_path):
+    obj_path = os.path.join(data_path, "pattern_flatten.obj")
+    pattern_json_path = os.path.join(data_path, "pattern.json")
+
+    garmage_path = os.path.join(data_path, "orig_data.pkl")
+    if not os.path.exists(garmage_path):
+        print("File missing, continue...")
+        return EXIT_MISSING_FILE
+    try:
+        # load garmage
+        geos, masks, _ = load_Garmage_pkl(garmage_path)
+
+        panels_json_dict, id2label = load_pattern_json(pattern_json_path)
+        obj_dict = load_garment_obj(obj_path, id2label)
+
+        mesh_output_dir = os.path.join(data_path, "mesh")
+        os.makedirs(mesh_output_dir, exist_ok=True)
+        for label in obj_dict:
+            print(f"\n\npanel {label}.")
+            idx = int(label)
+
+            # query position for each vertices of the faltten triangulated panel.
+            xyz = query_geo_img_one_panel(
+                obj_dict[label]["uv"],
+                panels_json_dict[label],
+                geos[idx], masks[idx],
+            )
+
+            # save output
+            visuals = trimesh.visual.texture.TextureVisuals(uv=obj_dict[label]["uv"])
+            T = Trimesh(
+                vertices=xyz,
+                visual=visuals,  # UV
+                faces=np.array(obj_dict[label]["faces"]),
+                process=False
+            )
+            T.export(os.path.join(mesh_output_dir, f"{label}.obj"))
+    except Exception as e:
+        print(f"Runtime error: {e}")
+        return EXIT_RUNTIME_ERROR
+
+    return EXIT_OK
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', default="<garmagenet-output-dir>/arrangement", type=str)
+    parser.add_argument("--data_path", type=str, default=None, required=True)
     args = parser.parse_args()
 
-    data_dir = args.data_dir
-    all_data_list = sorted(os.listdir(data_dir))
-
-    for idx, data in enumerate(all_data_list):
-        data_path = os.path.join(data_dir, data)
-        obj_path = glob(os.path.join(data_path, "*.obj"))[0]
-        pattern_json_path = os.path.join(data_path, "pattern.json")
-
-        try:
-            garmage_path = glob(os.path.join(data_path, "orig_data.pkl"))[0]
-        except Exception:
-            print("File missing, continue...")
-            continue
-
-        try:
-            # load garmage
-            geos, masks, _ = load_Garmage_pkl(garmage_path)
-
-            panels_json_dict, id2label = load_pattern_json(pattern_json_path)
-            obj_dict = load_garment_obj(obj_path, id2label)
-
-            mesh_output_dir = os.path.join(data_path, "mesh")
-            os.makedirs(mesh_output_dir, exist_ok=True)
-            for label in obj_dict:
-                idx = int(label)
-                # query position for each vertices of the faltten triangulated panel.
-                xyz = query_geo_img_one_panel(
-                    obj_dict[label]["uv"],
-                    panels_json_dict[label],
-                    geos[idx], masks[idx],
-                )
-
-                # save output
-                visuals = trimesh.visual.texture.TextureVisuals(uv=obj_dict[label]["uv"])
-                T = Trimesh(
-                    vertices=xyz,
-                    visual=visuals,  # UV
-                    faces=np.array(obj_dict[label]["faces"]),
-                    process=False
-                )
-                T.export(os.path.join(mesh_output_dir, f"{label}.obj"))
-        except Exception as e:
-            print(e)
-            continue
+    exit_code = main(args.data_path)
+    sys.exit(exit_code)

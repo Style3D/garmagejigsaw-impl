@@ -130,13 +130,13 @@ The GarmageJigsaw outputs like following.
 ```bash
 <garmagenet-output-dir>
 └── garmagejigsaw_output
-│   ├── <uuid_1>
+│   ├── garment_<uuid_1>
 │   │   ├── garment.json		# vectorized sewing pattern
 │   │   ├── orig_data.pkl		# garmage
 │   │   ├── vis_comp.html		# visualization 
 │   │   └── vis_resource.pkl
 │   ├── ...
-│   ├── <uuid_n>
+│   ├── garment_<uuid_n>
 ```
 
 <p align="center"><img src="assest/images/postprocess_GarmageJigsaw_output.png" width="100%"></p>
@@ -149,42 +149,33 @@ The GarmageJigsaw outputs like following.
 
 As above, GarmageJigsaw outputs **vectorized sewing patterns** in JSON format (`garment.json`) while the draping initializations are provided as Garmage PKL (`orig_data.pkl`). To integrate the results into existing garment modeling pipeline, we need to triangulate the sewing pattern and transfer Garmage into per-vertex location. 
 
-### Triangulation
+Copy the code of **`garmage_jigsaw/post_processing/Garmage_import_whole_process.py`** to the **Style3D Studio script window**, and change following paths:
 
-Copy the code of **`garmage_jigsaw/post_processing/json_2_sproj.py`** to the Style3D Studio script window. Change `data_root` to `<garmagenet-output-dir>/garmagejigsaw_output` and run the script.
+- Change **`data_root`** to `<garmagenet-output-dir>/garmagejigsaw_output` .
+- Change **`ENVIRONMENT`**  to your python environment path.
+- Change **`ARRANGEMENT_PYTHON`** to the absolute path of `garmage_jigsaw/post_processing/ arrangement_processone.py`
 
-<p align="center"><img src="assest/images/postprocess_json_2_sproj.png" width=100%"></p>
+Then, run the script.
 
-------
+<p align="center"><img src="assest/images/postprocess_runscript.png" width=180%"></p>
 
-Export the triangulated mesh of the flat pattern in `.obj` format from the `.sproj` file *(Run in **IDE**)*.
+The post-processing outputs like following:
 
 ```bash
-python garmage_jigsaw/post_processing/sproj_2_json_obj.py \
-	--data_root <garmagenet-output-dir>/arrangement
+<garmagenet-output-dir>
+└── arrangement
+│   ├── garment_<uuid_1>
+│   │   ├── pattern_flatten.obj		# triangulated flatten pattern
+│   │   ├── pattern.json			# vectorized sewing pattern
+│   │   ├── orig_data.pkl			# garmage
+│   │   ├── mesh					# arranged panel meshes
+│   │   │   ├── 00.obj
+│   │   │   ├── ...
+│   │   └── Arranged.sproj			# project with arranged cloth pieces and sewing
+│   ├── ...
 ```
 
-<p align="center"><img src="assest/images/postprocess_sproj_2_json_obj.png" width=100%"></p>
-
-### Transfer Draping Initialization from Garmage to Triangle Mesh
-
-Querying per-vertex 3D location from Garmage by running the following script from command line:
-```
-python garmage_jigsaw/post_processing/arrangement.py \
-	--data_dir <garmagenet-output-dir>/arrangement
-```
-
-<p align="center"><img src="assest/images/postprocess_arrangement.png" width=100%"></p>
-
-------
-
-Import the initialization results back to Style3D Studio by running `garmage_jigsaw/post_processing/arrangement_2_sproj.py` from Style3D Studio's script environment. Remember to change the `data_root` to the output directory (e.g. `<garmagenet-output-dir>/arrangement`) in the previous step. 
-
-You should copy the code of `**garmage_jigsaw/post_processing/arrangement_2_sproj.py**` to the Style3D Studio script window. 
-
-Then change `data_root` to the  and run script by press the button shown in image below.
-
-<p align="center"><img src="assest/images/postprocess_arrangement_2_sproj.png" width=100%"></p>
+<p align="center"><img src="assest/images/postprocess_whole_process_arrangedresult.png" width=100%"></p>
 
 
 
