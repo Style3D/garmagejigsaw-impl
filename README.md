@@ -147,13 +147,13 @@ The GarmageJigsaw outputs like following.
 
 ## 👕 Integrating to [Style3D Studio](https://studio.style3d.com/)
 
-As above, GarmageJigsaw outputs **vectorized sewing patterns** in JSON format (`garment.json`) while the draping initializations are provided as Garmage PKL (`orig_data.pkl`). To integrate the results into existing garment modeling pipeline, we need to triangulate the sewing pattern and transfer Garmage into per-vertex location. 
+As above, GarmageJigsaw outputs **vectorized sewing patterns** in JSON format (`garment.json`) while the draping initializations are provided as Garmage PKL (`orig_data.pkl`). To integrate the results into existing garment modeling pipeline, we need to triangulate the sewing pattern, acquiring per-vertex location from Garmage and using simulation to refine the result. We provide a post-processing script leveraging the Style3D Python API (`spy`) to accomplish these.
 
-Copy the code of **`garmage_jigsaw/post_processing/Garmage_import_whole_process.py`** to the **Style3D Studio script window**, and change following paths:
+Copy the code of **`garmage_jigsaw/post_processing/import_garmage.py`** to the **Style3D Studio script window**, and change following paths:
 
 - Change **`data_root`** to `<garmagenet-output-dir>/garmagejigsaw_output` .
 - Change **`ENVIRONMENT`**  to your python environment path.
-- Change **`ARRANGEMENT_PYTHON`** to the absolute path of `garmage_jigsaw/post_processing/ arrangement_processone.py`
+- Change **`ARRANGEMENT_PYTHON`** to the absolute path of `garmage_jigsaw/post_processing/arrangement_processone.py`
 
 Then, run the script.
 
