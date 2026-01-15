@@ -273,7 +273,7 @@ def _pad_arr(arr, pad_size=10):
 from chamferdist import ChamferDistance
 CD = ChamferDistance()
 def shape_dedup_cd(data):
-    threshold = 2
+    threshold = 1
 
     if "surf_bbox" in data:
         _surf_bbox = data["surf_bbox"]
@@ -396,7 +396,7 @@ def load_data(garment_fp, save_vis=False, shape_dedup=False):
     geo_orig = _pad_arr(geo_orig, pad_size=5)
     mask = _pad_arr(mask, pad_size=5)
 
-    return geo_orig, mask, uv_bbox
+    return geo_orig, mask, uv_bbox, data
 
 
 def resample_boundary(points, contour, corner_index, delta, c_idx, outlier_thresh=0.05):
@@ -496,6 +496,7 @@ def resample_boundary(points, contour, corner_index, delta, c_idx, outlier_thres
     resampled_points_2D = np.zeros((num_points, 2))
     for i in range(2):
         resampled_points_2D[:, i] = np.interp(new_arc_lengths, arc_lengths, contour[:, i])
+    resampled_points_2D[new_corner_index] = contour[corner_index]
 
     if TEST:
         A = resampled_points_2D[new_corner_index]
@@ -989,8 +990,6 @@ def extract_boundary_pts(geo_orig, uv_bbox, mask, delta=0.023, RESO=256, erode_s
     """
     return resampled_points_3D, resampled_points_2D, contour_nes, np.array(panel_nes), edge_approx, np.array(panel_instance_seg), contour_nps
 
-# === START of control point select algorithm ===
-# --- Helper Function: Arc Length Resampling ---
 
 def resample_by_arc_length(points: np.ndarray, target_count: int) -> np.ndarray:
     """
@@ -1025,121 +1024,6 @@ def resample_by_arc_length(points: np.ndarray, target_count: int) -> np.ndarray:
     return np.column_stack((x_resampled, y_resampled))
 
 
-# --- Helper Function: Calculate Max Perpendicular Distance ---
-
-def get_segment_max_distance(points: np.ndarray, start_idx: int, end_idx: int) -> Tuple[float, int]:
-    """
-    Calculates the maximum perpendicular distance from points between start/end indices
-    to the connecting segment line (RDP core logic).
-
-    :param points: Global array of points (smoothed_points or rdp_segment).
-    :param start_idx: Global index of the segment start point.
-    :param end_idx: Global index of the segment end point.
-    :return: Tuple of (max_distance, max_index)
-    """
-    p_start = points[start_idx]
-    p_end = points[end_idx]
-    middle_points = points[start_idx + 1: end_idx]
-
-    if len(middle_points) == 0:
-        return 0.0, -1
-
-    A = p_end - p_start
-    A_dot_A = np.dot(A, A)
-
-    if A_dot_A > 1e-9:
-        B = middle_points - p_start
-        # Calculate projection parameter t
-        t = np.sum(B * A, axis=1) / A_dot_A
-        P_proj = p_start + t[:, np.newaxis] * A
-        distances = np.linalg.norm(middle_points - P_proj, axis=1)
-
-        max_distance = np.max(distances)
-        max_index_in_middle = np.argmax(distances)
-        max_index = start_idx + 1 + max_index_in_middle
-        return max_distance, max_index
-
-    return 0.0, -1
-
-
-# --- Helper Function: Global Maximum Error Simplification (Optimized RDP) ---
-
-def simplify_edge_points_GlobalMax(points: np.ndarray, max_controls: int, tolerance: float) -> List[np.ndarray]:
-    """
-    Selects control points by iteratively splitting the segment with the globally largest error (max distance).
-    Stops when MAX_CONTROLS points are selected or the global max distance is below the tolerance.
-
-    :param points: The segment points (e.g., rdp_segment) to be simplified.
-    :param max_controls: The target number of internal control points to extract.
-    :param tolerance: The distance threshold for termination.
-    :return: A list of selected control points (coordinates).
-    """
-    N = len(points)
-    if N < 3 or max_controls <= 0:
-        return []
-
-    # A: List of candidate segments: [max_distance, max_index, start_idx, end_idx]
-
-    # 1. Initialize list A with the full segment
-    max_dist, max_idx = get_segment_max_distance(points, 0, N - 1)
-
-    # Initial check against tolerance
-    if max_dist <= tolerance:
-        return []
-
-    A = [[max_dist, max_idx, 0, N - 1]]
-    selected_indices = []
-
-    # 2. Iterative splitting, limited by max_controls count
-    for k in range(max_controls):
-
-        if not A: break
-
-        # 2.1. Global Best Selection: Find the segment with the largest distance in A
-        max_dist_global = -1
-        best_segment_idx = -1
-
-        for i, segment in enumerate(A):
-            if segment[0] > max_dist_global:
-                max_dist_global = segment[0]
-                best_segment_idx = i
-
-        if best_segment_idx == -1: break
-
-        # 2.1.5. Geometric Tolerance Termination Check
-        if max_dist_global <= tolerance:
-            break
-
-        # 2.2. Split the best segment
-        best_segment = A.pop(best_segment_idx)
-        split_index = best_segment[1]
-        start_idx = best_segment[2]
-        end_idx = best_segment[3]
-
-        if split_index == -1: continue
-
-        # 3. Record the new control point index
-        selected_indices.append(split_index)
-
-        # 4. Generate and evaluate new segments
-
-        # Segment 1: [start_idx, split_index]
-        max_dist_1, max_idx_1 = get_segment_max_distance(points, start_idx, split_index)
-        if max_dist_1 > 0:
-            A.append([max_dist_1, max_idx_1, start_idx, split_index])
-
-        # Segment 2: [split_index, end_idx]
-        max_dist_2, max_idx_2 = get_segment_max_distance(points, split_index, end_idx)
-        if max_dist_2 > 0:
-            A.append([max_dist_2, max_idx_2, split_index, end_idx])
-
-    # 5. Final Result Compilation: Sort by index and extract coordinates
-    selected_indices.sort()
-    return [points[idx] for idx in selected_indices]
-
-
-# --- Main Function ---
-
 def uniform_sample_by_arc_length(points: np.ndarray, num_samples: int) -> np.ndarray:
     if len(points) < 2 or num_samples <= 0:
         return np.empty((0, 2))
@@ -1173,9 +1057,9 @@ def approx_curve(resampled_points_2D: List[np.ndarray], edge_approx: List[List[L
     """
     # Core Parameters
     SMOOTH_ITERATION = 4
-    SMOOTH_WINDOW_SIZE = 6
-    DISTANCE_TOLERANCE = 0.1  # Geometric error threshold for simplification
-    K_EXCLUDE = 6  # Number of points excluded near endpoints (applied after resampling)
+    SMOOTH_WINDOW_SIZE = 7
+    assert SMOOTH_WINDOW_SIZE%2==1
+    K_EXCLUDE = 2  # Number of points excluded near endpoints (applied after resampling)
     MAX_CONTROLS = 12  # Maximum number of internal control points
     TARGET_RESAMPLE_POINTS = 50  # Fixed number of points for arc-length resampling
 
@@ -1232,6 +1116,7 @@ def approx_curve(resampled_points_2D: List[np.ndarray], edge_approx: List[List[L
 
             # 2. Smooth the resampled curve
             smoothed_points = moving_average_smooth(resampled_edge_points, SMOOTH_WINDOW_SIZE, iterations=SMOOTH_ITERATION)
+            # smoothed_points = resampled_edge_points
 
             # 3. Determine the segment range for simplification (Excluding points near endpoints due to smoothing artifacts)
             middle_start_idx = K_EXCLUDE
@@ -1244,14 +1129,6 @@ def approx_curve(resampled_points_2D: List[np.ndarray], edge_approx: List[List[L
                 # Segment ready for simplification
                 rdp_segment = smoothed_points[middle_start_idx:middle_end_idx]
 
-                # # 4. Global Maximum Error Simplification
-                # control_points_list = simplify_edge_points_GlobalMax(rdp_segment, MAX_CONTROLS, DISTANCE_TOLERANCE)
-                #
-                # # 5. Result Consolidation
-                # if len(control_points_list) > 0:
-                #     control_points = np.vstack(control_points_list)
-                # else:
-                #     control_points = np.array([])
 
                 # 4. Uniform sampling between endpoints (no parameter changes)
                 control_points = uniform_sample_by_arc_length(
@@ -1259,7 +1136,7 @@ def approx_curve(resampled_points_2D: List[np.ndarray], edge_approx: List[List[L
                     MAX_CONTROLS
                 )
 
-                # 6. Construct the final output: Middle points + strictly original endpoints
+                # 5. Construct the final output: Middle points + strictly original endpoints
                 if control_points.ndim == 2 and control_points.shape[0] > 0:
                     final_edge_points = np.vstack((edge_points[0], control_points, edge_points[-1]))
                 else:
@@ -1475,7 +1352,7 @@ def get_full_uv_info(resampled_points_2D, panel_instance_seg, uv_bbox, contour_n
     return uv_global
 
 
-def save_resaults(output_dir, g_idx,
+def save_resaults(output_dir, g_idx, data,
                   resampled_points_3D, edge_approx, contour_nes, panel_nes, panel_instance_seg,
                   garment_json, full_uv_info, cfg, garment_fp, g_basename=None):
     """
@@ -1540,10 +1417,11 @@ def save_resaults(output_dir, g_idx,
     original_data_dir = os.path.join(garment_dir, "original_data")
     os.makedirs(original_data_dir, exist_ok=True)
 
-    with open(garment_fp, 'rb') as f:
-        _data = pickle.load(f)
+    for k in data:
+        if isinstance(data[k], np.ndarray):
+            data[k] = data[k].tolist()
     with open(os.path.join(original_data_dir, os.path.basename(garment_fp)), "wb") as f:
-        pickle.dump(_data, f)
+        pickle.dump(data, f)
 
 
 if __name__ == "__main__":
@@ -1585,7 +1463,7 @@ if __name__ == "__main__":
         except Exception:   g_idx = g_idx
 
         # read data
-        geo_orig, mask, uv_bbox = load_data(garment_fp, save_vis=False, shape_dedup=args.shape_dedup)
+        geo_orig, mask, uv_bbox, data = load_data(garment_fp, save_vis=False, shape_dedup=args.shape_dedup)
 
         # extract boundary points => resample boundary points => split boundary into edges (contour_nes)
         resampled_points_3D, resampled_points_2D, contour_nes, panel_nes, edge_approx, panel_instance_seg, contour_nps = (
@@ -1593,6 +1471,9 @@ if __name__ == "__main__":
 
         # Denormalize resampled_points_2D to UV coordinates based on uv_bbox
         full_uv_info = get_full_uv_info(resampled_points_2D, panel_instance_seg, uv_bbox, contour_nps, show_full_uv=False)
+        # [test]
+        # pointcloud_visualize([np.pad(resampled_points_2D[0], (0, 1)), np.pad(resampled_points_2D[0][edge_approx[0][:, 0]], (0, 1))], colornum=5, color_norm=[-1, 1])
+
 
         # Get sampling points for curve fitting
         approx_curve_samples = approx_curve(resampled_points_2D, edge_approx, contour_nps)
@@ -1606,6 +1487,7 @@ if __name__ == "__main__":
         save_resaults(
             output_dir,
             g_idx,
+            data,
             resampled_points_3D,
             edge_approx,
             contour_nes,

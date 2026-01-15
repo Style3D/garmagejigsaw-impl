@@ -948,26 +948,7 @@ def pointstitch_2_edgestitch(batch, inf_rst, stitch_mat, stitch_indices,
 
     # [todo] Delete edge if average 3D distance between point-to-point stitches is too large ------------------
 
-    # Detect if any stitch edge orientation (CCW/CW) was predicted incorrectly based on stitch distance ------
-    for idx, stitch_points_list in enumerate(all_stitch_points_list):
-        from_indices = torch.tensor([p[0]["id"] for p in stitch_points_list]).detach().cpu().numpy()
-        to_indices = torch.tensor([p[1]["id"] for p in stitch_points_list]).detach().cpu().numpy()
-        from_pcs = pcs[from_indices]
-        to_pcs = pcs[to_indices]
-
-        # Calculate total stitch distance under current orientation
-        diff = from_pcs - to_pcs
-        dist = np.linalg.norm(diff, axis=1).sum()
-        # Calculate total stitch distance if the target edge is reversed
-        diff_rev = from_pcs - torch.flip(to_pcs, dims=[0])
-        dist_rev = np.linalg.norm(diff_rev, axis=1).sum()
-
-        # If distance is shorter after reversing, the previous orientation was likely predicted incorrectly
-        if dist_rev < dist:
-            isCC_order_list[idx][1] = not isCC_order_list[idx][1]
-            stitch_points_list_to_rev = deepcopy([p[1] for p in stitch_points_list[::-1]])
-            for i in range(len(stitch_points_list)):
-                stitch_points_list[i][1] = stitch_points_list_to_rev[i]
+    # [todo] Detect if any stitch edge orientation (CCW/CW) was predicted incorrectly based on stitch distance ------
 
     # Retrieve stitch information ----------------------------------------------------------------------------
     # List to store all stitch edge info (for subsequent optimization)
